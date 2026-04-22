@@ -1,0 +1,16 @@
+:root {
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+	--shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.6);
+	--shadow-xl: 0 24px 72px rgba(0, 0, 0, 0.7);
+
+	--ring-inset: inset 0 0 0 1px var(--border-subtle);
+	--ring-inset-strong: inset 0 0 0 1px var(--border-default);
+
+	--glow-accent: 0 0 48px var(--accent-glow);
+	--glow-soft: 0 0 120px rgba(255, 255, 255, 0.04);
+
+	--blur-sm: blur(12px) saturate(180%);
+	--blur-md: blur(24px) saturate(180%);
+	--blur-lg: blur(40px) saturate(200%);
+}

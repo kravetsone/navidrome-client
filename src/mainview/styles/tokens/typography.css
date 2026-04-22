@@ -1,0 +1,33 @@
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+
+:root {
+	--font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Inter", system-ui, sans-serif;
+	--font-display: "Instrument Serif", "New York", "Times New Roman", serif;
+	--font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+	--text-xs: 11px;
+	--text-sm: 12px;
+	--text-base: 13px;
+	--text-md: 14px;
+	--text-lg: 16px;
+	--text-xl: 20px;
+	--text-2xl: 28px;
+	--text-3xl: 40px;
+	--text-4xl: 56px;
+	--text-hero: 88px;
+
+	--leading-tight: 1.1;
+	--leading-snug: 1.25;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.7;
+
+	--tracking-tight: -0.02em;
+	--tracking-normal: 0;
+	--tracking-wide: 0.02em;
+	--tracking-widest: 0.12em;
+
+	--weight-regular: 400;
+	--weight-medium: 500;
+	--weight-semibold: 600;
+	--weight-bold: 700;
+}

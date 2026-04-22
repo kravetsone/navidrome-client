@@ -3,7 +3,6 @@ import { BrowserWindow, Updater } from "electrobun/bun";
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
 
-// Check if Vite dev server is running for HMR
 async function getMainViewUrl(): Promise<string> {
 	const channel = await Updater.localInfo.channel();
 	if (channel === "dev") {
@@ -23,14 +22,16 @@ async function getMainViewUrl(): Promise<string> {
 const url = await getMainViewUrl();
 
 const mainWindow = new BrowserWindow({
-	title: "Solid App",
+	title: "Navidrome",
 	url,
+	titleBarStyle: "hiddenInset",
+	transparent: true,
 	frame: {
-		width: 900,
-		height: 700,
-		x: 200,
-		y: 200,
+		width: 1200,
+		height: 780,
+		x: 160,
+		y: 120,
 	},
 });
 
-console.log("Solid app started!");
+console.log("Navidrome client started", mainWindow.id);
