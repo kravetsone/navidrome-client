@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "skills": {
+    "electrobun-best-practices": {
+      "source": "0xbigboss/claude-code",
+      "sourceType": "github",
+      "computedHash": "708f261a16aa01e1b0d7a9a0b904dbe6176e864f424515db4f48707cd11dfdf9"
+    },
+    "electrobun-debugging": {
+      "source": "rajavijayach/electrobun-skills",
+      "sourceType": "github",
+      "computedHash": "100c1ef61d1610d6003b0b886ba3ef00c5275b172d5595623e1e7942f2738fe5"
+    },
+    "electrobun-distribution": {
+      "source": "rajavijayach/electrobun-skills",
+      "sourceType": "github",
+      "computedHash": "461a96be112f16ef285c4f7836adcc694527da639259da279fca784d8b966ac7"
+    },
+    "electrobun-native-ui": {
+      "source": "rajavijayach/electrobun-skills",
+      "sourceType": "github",
+      "computedHash": "d224912dbe1f5595798cecf756354ccd3a54e5f712abaa7a5b98d22a91cf7cbf"
+    },
+    "electrobun-rpc-patterns": {
+      "source": "rajavijayach/electrobun-skills",
+      "sourceType": "github",
+      "computedHash": "eaf1ec65af11e4292b99cd48934c0d74d099159222a53fd2b55e039ed3a3ed95"
+    },
+    "electrobun-window-management": {
+      "source": "rajavijayach/electrobun-skills",
+      "sourceType": "github",
+      "computedHash": "be6f9c20d71f2edeaf2d9718ab906b3f5fd0b8575e954d2b2e0e7d31b842fbd9"
+    },
+    "extract-design-system": {
+      "source": "arvindrk/extract-design-system",
+      "sourceType": "github",
+      "computedHash": "5f231fda377e304b202848f09ecc0fd42839355e76f60e06c3ceb7a643c15500"
+    },
+    "macos-design-guidelines": {
+      "source": "ehmo/platform-design-skills",
+      "sourceType": "github",
+      "computedHash": "fdbeb208feb60e5ed08226e4e1e714eade6cfe6530ad27c792992823de63ca0d"
+    },
+    "solidjs-patterns": {
+      "source": "different-ai/openwork",
+      "sourceType": "github",
+      "computedHash": "36b8b60c8d67ee2c94edaeca24d2c182369c8bec1cce3289db428d1f029d3949"
+    },
+    "subsonic-api": {
+      "source": "kravetsone/skills",
+      "sourceType": "github",
+      "computedHash": "49d55f0dd1f75bc18ad38e7468d9949d7280e1efe74f48277a54ae18bbb9c4c9"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}

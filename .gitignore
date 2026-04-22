@@ -1,0 +1,29 @@
+# deps
+node_modules/
+
+# electrobun build artifacts
+build/
+artifacts/
+
+# vite build output (copied into electrobun bundle at build time)
+dist/
+
+# logs / caches
+*.log
+.DS_Store
+.vite/
+.cache/
+
+# env
+.env
+.env.*
+!.env.example
+
+# editor / os
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+
+# claude local overrides (keep shared settings/skills tracked)
+.claude/settings.local.json
