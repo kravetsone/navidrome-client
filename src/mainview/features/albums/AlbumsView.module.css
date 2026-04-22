@@ -1,17 +1,25 @@
-.home {
+.page {
+	padding: var(--space-9) 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-10);
-	padding: var(--space-9) 0 var(--space-9);
+	gap: var(--space-8);
 	max-width: var(--content-max-width);
 	margin: 0 auto;
 }
 
-.greeting {
+.header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--space-6);
+	padding: 0 var(--space-1);
+}
+
+.titleGroup {
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-3);
-	padding: 0 var(--space-1);
+	gap: var(--space-2);
 }
 
 .eyebrow {
@@ -19,45 +27,54 @@
 	font-weight: var(--weight-semibold);
 	letter-spacing: var(--tracking-widest);
 	text-transform: uppercase;
-	color: var(--accent);
+	color: var(--text-tertiary);
 }
 
 .title {
 	font-family: var(--font-display);
-	font-size: var(--text-4xl);
+	font-size: var(--text-3xl);
 	font-style: italic;
 	font-weight: var(--weight-regular);
-	line-height: var(--leading-tight);
 	color: var(--text-primary);
-	letter-spacing: var(--tracking-tight);
+	line-height: var(--leading-tight);
 }
 
-.subtitle {
-	font-size: var(--text-lg);
-	color: var(--text-secondary);
-	max-width: 560px;
-}
-
-.empty {
-	padding: var(--space-10) var(--space-7);
-	text-align: center;
+.sortGroup {
+	display: inline-flex;
+	gap: var(--space-1);
+	padding: var(--space-1);
 	background: var(--surface-glass);
 	border: 1px solid var(--border-subtle);
-	border-radius: var(--radius-lg);
+	border-radius: var(--radius-full);
+}
+
+.sortOption {
+	padding: var(--space-2) var(--space-5);
+	font-size: var(--text-sm);
+	font-weight: var(--weight-medium);
 	color: var(--text-secondary);
-	font-size: var(--text-md);
+	border-radius: var(--radius-full);
+	transition:
+		background var(--duration-fast) var(--ease-standard),
+		color var(--duration-fast) var(--ease-standard);
 }
 
-.skeletonRail {
+.sortOption:hover {
+	color: var(--text-primary);
+}
+
+.sortOption[data-active="true"] {
+	background: var(--surface-selected);
+	color: var(--text-primary);
+}
+
+.grid {
 	display: grid;
-	grid-auto-flow: column;
-	grid-auto-columns: 180px;
-	gap: var(--space-6);
-	overflow: hidden;
-	padding: var(--space-1) 0;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: var(--space-7) var(--space-6);
 }
 
-.skeletonCard {
+.skeleton {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-4);

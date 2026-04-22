@@ -1,5 +1,5 @@
 import { SubsonicClient, normalizeServerUrl } from "./client";
-import type { ServerCaps, ServerConfig, ServerType } from "./types";
+import type { ServerCaps, ServerConfig, ServerType, SpeedTestResult } from "./types";
 
 export interface ProbeDraft {
 	url: string;
@@ -11,6 +11,7 @@ export interface ProbeDraft {
 export interface ProbeResult {
 	caps: ServerCaps;
 	warnings: string[];
+	speed: SpeedTestResult;
 }
 
 function detectType(ping: { type?: string; openSubsonic?: boolean; serverName?: string }): ServerType {
@@ -43,6 +44,8 @@ export async function probeServer(draft: ProbeDraft): Promise<ProbeResult> {
 		}
 	}
 
+	const speed = await client.speedTest();
+
 	return {
 		caps: {
 			type: detectType(ping),
@@ -53,6 +56,7 @@ export async function probeServer(draft: ProbeDraft): Promise<ProbeResult> {
 			lastProbedAt: Date.now(),
 		},
 		warnings,
+		speed,
 	};
 }
 

@@ -54,3 +54,17 @@ export class NetworkError extends Error {
 		this.name = "NetworkError";
 	}
 }
+
+export class InvalidEndpointError extends Error {
+	constructor(message: string, public readonly detail?: string) {
+		super(message);
+		this.name = "InvalidEndpointError";
+	}
+}
+
+export interface SpeedTestResult {
+	pingMs: number;
+	throughputMbps?: number;
+	bytes?: number;
+	durationMs?: number;
+}

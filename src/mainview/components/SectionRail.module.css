@@ -1,0 +1,67 @@
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-5);
+	padding: 0 var(--space-1);
+}
+
+.titleGroup {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.eyebrow {
+	font-size: var(--text-xs);
+	font-weight: var(--weight-semibold);
+	letter-spacing: var(--tracking-widest);
+	text-transform: uppercase;
+	color: var(--text-tertiary);
+}
+
+.title {
+	font-family: var(--font-display);
+	font-size: var(--text-2xl);
+	font-style: italic;
+	font-weight: var(--weight-regular);
+	line-height: var(--leading-tight);
+	color: var(--text-primary);
+}
+
+.link {
+	font-size: var(--text-sm);
+	color: var(--text-secondary);
+	transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.link:hover {
+	color: var(--text-primary);
+}
+
+.rail {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 180px;
+	gap: var(--space-6);
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding: var(--space-1) 0 var(--space-4);
+	scroll-snap-type: x proximity;
+	scroll-padding-left: var(--space-1);
+	scrollbar-width: thin;
+}
+
+.rail > * {
+	scroll-snap-align: start;
+}
+
+.rail::-webkit-scrollbar {
+	height: 6px;
+}
