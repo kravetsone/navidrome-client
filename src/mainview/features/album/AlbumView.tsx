@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, onCleanup } from "solid-js";
+import { Show, createEffect, createMemo, onCleanup } from "solid-js";
 import { A, useParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
@@ -7,27 +7,14 @@ import { $activeServer } from "../../stores/servers";
 import { albumQuery, clientFor } from "../../lib/queries";
 import type { ServerConfig, Song } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
-import {
-	$currentSong,
-	$isPlaying,
-	playQueue,
-	toggleShuffle,
-	$shuffle,
-} from "../../stores/player";
+import { TrackList } from "../../components/TrackList";
+import { playQueue, toggleShuffle, $shuffle } from "../../stores/player";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
 	resetAmbientPalette,
 } from "../../lib/palette";
 import styles from "./AlbumView.module.css";
-
-function formatTrackDuration(seconds?: number): string {
-	if (!seconds || !Number.isFinite(seconds)) return "—";
-	const s = Math.floor(seconds);
-	const m = Math.floor(s / 60);
-	const r = s % 60;
-	return `${m}:${r.toString().padStart(2, "0")}`;
-}
 
 function formatTotalDuration(seconds?: number): string {
 	if (!seconds || !Number.isFinite(seconds)) return "";
@@ -160,7 +147,7 @@ function AlbumBody(props: { server: ServerConfig; id: string }) {
 							<Show when={songs().length > 0}>
 								<TrackList
 									songs={songs()}
-									albumArtist={allArtist}
+									omitArtist={allArtist}
 									onPlay={(i) => playQueue(songs(), i)}
 								/>
 							</Show>
@@ -169,77 +156,5 @@ function AlbumBody(props: { server: ServerConfig; id: string }) {
 				}}
 			</Show>
 		</Show>
-	);
-}
-
-function TrackList(props: {
-	songs: Song[];
-	albumArtist?: string;
-	onPlay: (index: number) => void;
-}) {
-	const currentSong = useStore($currentSong);
-	const isPlaying = useStore($isPlaying);
-
-	return (
-		<section class={styles.tracks}>
-			<header class={styles.trackHead}>
-				<span class={styles.colNum}>#</span>
-				<span>Title</span>
-				<span>Artist</span>
-				<span class={styles.colDur}>Duration</span>
-			</header>
-			<ol class={styles.trackList}>
-				<For each={props.songs}>
-					{(song, i) => {
-						const active = () => currentSong()?.id === song.id;
-						const showDifferentArtist =
-							song.artist && song.artist !== props.albumArtist;
-						return (
-							<li
-								class={styles.track}
-								data-active={active()}
-								onDblClick={() => props.onPlay(i())}
-							>
-								<button
-									type="button"
-									class={styles.trackNum}
-									onClick={() => props.onPlay(i())}
-									aria-label={`Play ${song.title}`}
-								>
-									<Show
-										when={active() && isPlaying()}
-										fallback={
-											<>
-												<span class={styles.num}>
-													{song.track ?? i() + 1}
-												</span>
-												<Play
-													class={styles.playIcon}
-													size={14}
-													fill="currentColor"
-												/>
-											</>
-										}
-									>
-										<span class={styles.playing}>
-											<span />
-											<span />
-											<span />
-										</span>
-									</Show>
-								</button>
-								<span class={styles.trackTitle}>{song.title}</span>
-								<span class={styles.trackArtist}>
-									{showDifferentArtist ? song.artist : ""}
-								</span>
-								<span class={styles.trackDuration}>
-									{formatTrackDuration(song.duration)}
-								</span>
-							</li>
-						);
-					}}
-				</For>
-			</ol>
-		</section>
 	);
 }

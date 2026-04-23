@@ -9,6 +9,7 @@ import { AlbumView } from "./features/album/AlbumView";
 import { ArtistsView } from "./features/artists/ArtistsView";
 import { ArtistView } from "./features/artist/ArtistView";
 import { PlaylistsView } from "./features/playlists/PlaylistsView";
+import { PlaylistView } from "./features/playlist/PlaylistView";
 import { ConnectView } from "./features/connect/ConnectView";
 import { SettingsView } from "./features/settings/SettingsView";
 import { Placeholder } from "./components/Placeholder";
@@ -34,6 +35,7 @@ export default function App() {
 			<Route path="/artists" component={ArtistsView} />
 			<Route path="/artist/:id" component={ArtistView} />
 			<Route path="/playlists" component={PlaylistsView} />
+			<Route path="/playlist/:id" component={PlaylistView} />
 			<Route path="/connect" component={ConnectView} />
 			<Route path="/settings" component={SettingsView} />
 			<Route

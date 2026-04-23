@@ -55,15 +55,10 @@
 	word-break: break-word;
 }
 
-.artist {
-	font-size: var(--text-lg);
+.comment {
+	font-size: var(--text-md);
 	color: var(--text-secondary);
-	align-self: flex-start;
-	transition: color var(--duration-fast) var(--ease-standard);
-}
-
-.artist:hover {
-	color: var(--text-primary);
+	max-width: 560px;
 }
 
 .meta {
@@ -129,4 +124,3 @@
 	opacity: 0.4;
 	pointer-events: none;
 }
-
