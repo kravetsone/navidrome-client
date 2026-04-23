@@ -1,9 +1,10 @@
-import { createSignal, Show } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 import { gradientFor, initialsFor } from "../lib/color";
 import styles from "./CoverArt.module.css";
 
 interface CoverArtProps {
 	src?: string;
+	fallbackSrc?: string;
 	name: string;
 	round?: boolean;
 	size?: number;
@@ -12,9 +13,12 @@ interface CoverArtProps {
 
 export function CoverArt(props: CoverArtProps) {
 	const [loaded, setLoaded] = createSignal(false);
-	const [failed, setFailed] = createSignal(false);
+	const [tier, setTier] = createSignal(0);
 
-	const showImage = () => Boolean(props.src) && !failed();
+	const sources = createMemo(() =>
+		[props.src, props.fallbackSrc].filter((s): s is string => Boolean(s)),
+	);
+	const currentSrc = () => sources()[tier()];
 	const fontSize = () => Math.max(14, (props.size ?? 180) * 0.28);
 
 	return (
@@ -25,22 +29,27 @@ export function CoverArt(props: CoverArtProps) {
 				...(props.size ? { width: `${props.size}px`, height: `${props.size}px` } : {}),
 			}}
 		>
-			<Show when={!loaded() && showImage()}>
+			<Show when={!loaded() && currentSrc()}>
 				<div class={styles.skeleton} />
 			</Show>
-			<Show when={showImage()}>
-				<img
-					class={styles.image}
-					src={props.src}
-					alt={props.name}
-					data-loaded={loaded()}
-					loading="lazy"
-					draggable={false}
-					onLoad={() => setLoaded(true)}
-					onError={() => setFailed(true)}
-				/>
+			<Show when={currentSrc()} keyed>
+				{(src) => (
+					<img
+						class={styles.image}
+						src={src}
+						alt={props.name}
+						data-loaded={loaded()}
+						loading="lazy"
+						draggable={false}
+						onLoad={() => setLoaded(true)}
+						onError={() => {
+							setLoaded(false);
+							setTier((t) => t + 1);
+						}}
+					/>
+				)}
 			</Show>
-			<Show when={!showImage()}>
+			<Show when={!currentSrc()}>
 				<span class={styles.fallback} style={{ "font-size": `${fontSize()}px` }}>
 					{initialsFor(props.name)}
 				</span>

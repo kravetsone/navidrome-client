@@ -130,6 +130,12 @@ function ArtistCard(props: {
 		return props.client.coverArtUrl(coverId, 240);
 	});
 
+	const coverFallbackSrc = createMemo(() => {
+		const firstAlbum = detail.data?.album?.[0];
+		if (!firstAlbum?.coverArt) return undefined;
+		return props.client.coverArtUrl(firstAlbum.coverArt, 240);
+	});
+
 	return (
 		<div ref={cardRef}>
 			<ArtistContextMenu artist={props.artist}>
@@ -142,6 +148,7 @@ function ArtistCard(props: {
 							: undefined
 					}
 					coverSrc={coverSrc()}
+					coverFallbackSrc={coverFallbackSrc()}
 					round
 				/>
 			</ArtistContextMenu>

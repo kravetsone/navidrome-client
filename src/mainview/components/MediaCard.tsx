@@ -9,6 +9,7 @@ interface MediaCardProps {
 	subtitle?: string;
 	meta?: string;
 	coverSrc?: string;
+	coverFallbackSrc?: string;
 	round?: boolean;
 }
 
@@ -17,6 +18,7 @@ export function MediaCard(props: MediaCardProps) {
 		<A href={props.href} class={styles.card} data-round={props.round}>
 			<CoverArt
 				src={props.coverSrc}
+				fallbackSrc={props.coverFallbackSrc}
 				name={props.title}
 				round={props.round}
 				class={styles.cover}
