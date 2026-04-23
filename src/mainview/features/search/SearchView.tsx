@@ -142,7 +142,7 @@ export function SearchView() {
 	);
 
 	onMount(() => {
-		inputRef?.focus();
+		inputRef?.focus({ preventScroll: true });
 		if (input().length > 0) {
 			inputRef.setSelectionRange(input().length, input().length);
 		}

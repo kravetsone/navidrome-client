@@ -14,10 +14,16 @@ function sync() {
 
 let scrollEl: HTMLElement | null = null;
 let rafPending = false;
+// Per-path memory survives beyond the live stack. Re-entering a path via
+// the sidebar (a fresh push, not back/forward) still restores its last
+// known scroll position.
+const scrollByPath = new Map<string, number>();
 
 function captureCurrentScroll() {
 	if (!scrollEl || idx < 0) return;
-	scrolls[idx] = scrollEl.scrollTop;
+	const y = scrollEl.scrollTop;
+	scrolls[idx] = y;
+	scrollByPath.set(stack[idx], y);
 }
 
 function onScroll() {
@@ -69,9 +75,9 @@ export function trackLocation(path: string) {
 		stack.length = idx + 1;
 		scrolls.length = idx + 1;
 		stack.push(path);
-		scrolls.push(0);
+		target = scrollByPath.get(path) ?? 0;
+		scrolls.push(target);
 		idx = stack.length - 1;
-		target = 0;
 	}
 	sync();
 	restoreScroll(target);
