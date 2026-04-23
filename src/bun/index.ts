@@ -2,7 +2,13 @@ import { BrowserView, BrowserWindow, Updater } from "electrobun/bun";
 import { installApplicationMenu } from "./menu";
 import { discordPresence } from "./discord-presence";
 import { persistence } from "./db";
-import type { AppRPCSchema } from "../shared/rpc-schema";
+import {
+	disposeIntegrations,
+	installGlobalShortcuts,
+	installTray,
+	setNowPlayingMeta,
+} from "./tray";
+import type { AppRPCSchema, NowPlayingMeta } from "../shared/rpc-schema";
 import type { PresencePayload } from "../shared/discord";
 import { HISTORY_LIMIT } from "../shared/persistence";
 
@@ -61,6 +67,9 @@ const rpc = BrowserView.defineRPC<AppRPCSchema>({
 			historyClear: () => {
 				persistence.historyClear();
 			},
+			setNowPlayingMeta: (meta: NowPlayingMeta | null) => {
+				setNowPlayingMeta(meta);
+			},
 		},
 	},
 });
@@ -80,9 +89,12 @@ const mainWindow = new BrowserWindow({
 });
 
 discordPresence.start();
+installTray(mainWindow);
+installGlobalShortcuts(mainWindow);
 
 process.on("beforeExit", () => {
 	discordPresence.stop();
+	disposeIntegrations();
 });
 
 console.log("Navidrome client started", mainWindow.id);

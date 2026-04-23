@@ -8,6 +8,7 @@ import { hydrateServers } from "./stores/servers";
 import { hydratePlayer } from "./stores/player";
 import { hydrateHistory } from "./stores/history";
 import { initDiscordPresence } from "./stores/discord-presence";
+import { installNowPlayingBridge } from "./lib/nowPlayingBridge";
 import App from "./App";
 
 void electroview;
@@ -18,6 +19,7 @@ async function boot() {
 	hydratePlayer();
 	hydrateHistory();
 	initDiscordPresence();
+	installNowPlayingBridge();
 
 	render(
 		() => (
