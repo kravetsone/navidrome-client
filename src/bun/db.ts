@@ -56,6 +56,20 @@ function runMigrations(db: Database): void {
 			db.exec("PRAGMA user_version = 1");
 		})();
 	}
+
+	if (current < 2) {
+		db.transaction(() => {
+			db.exec(`
+				CREATE TABLE IF NOT EXISTS cover_art_lookups (
+					key       TEXT PRIMARY KEY,
+					url       TEXT,
+					stored_at INTEGER NOT NULL
+				);
+				CREATE INDEX IF NOT EXISTS idx_cover_art_stored_at ON cover_art_lookups(stored_at);
+			`);
+			db.exec("PRAGMA user_version = 2");
+		})();
+	}
 }
 
 const db = openDb();
@@ -87,6 +101,23 @@ const historyTrim = db.query<null, [number]>(
 	"DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY played_at DESC LIMIT ?)",
 );
 const historyClear = db.query<null, []>("DELETE FROM history");
+
+const coverArtSelect = db.query<
+	{ url: string | null; stored_at: number },
+	[string]
+>("SELECT url, stored_at FROM cover_art_lookups WHERE key = ?");
+const coverArtUpsert = db.query<null, [string, string | null, number]>(
+	"INSERT INTO cover_art_lookups (key, url, stored_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET url = excluded.url, stored_at = excluded.stored_at",
+);
+const coverArtPrune = db.query<null, [number]>(
+	"DELETE FROM cover_art_lookups WHERE stored_at < ?",
+);
+const coverArtCount = db.query<{ n: number }, []>(
+	"SELECT COUNT(*) as n FROM cover_art_lookups",
+);
+const coverArtTrimToLimit = db.query<null, [number]>(
+	"DELETE FROM cover_art_lookups WHERE key IN (SELECT key FROM cover_art_lookups ORDER BY stored_at ASC LIMIT ?)",
+);
 
 export const persistence = {
 	kvGetAll(): Record<string, unknown> {
@@ -152,6 +183,24 @@ export const persistence = {
 
 	historyClear(): void {
 		historyClear.run();
+	},
+
+	coverArtGet(key: string, maxAgeMs: number): string | null | undefined {
+		const row = coverArtSelect.get(key);
+		if (!row) return undefined;
+		if (Date.now() - row.stored_at > maxAgeMs) return undefined;
+		return row.url;
+	},
+
+	coverArtSet(key: string, url: string | null): void {
+		coverArtUpsert.run(key, url, Date.now());
+	},
+
+	coverArtMaintenance(maxAgeMs: number, maxRows: number): void {
+		coverArtPrune.run(Date.now() - maxAgeMs);
+		const row = coverArtCount.get();
+		const n = row?.n ?? 0;
+		if (n > maxRows) coverArtTrimToLimit.run(n - maxRows);
 	},
 };
 
