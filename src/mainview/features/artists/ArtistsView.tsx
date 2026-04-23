@@ -2,7 +2,7 @@ import { For, Show, createMemo } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
-import { artistQuery, artistsQuery, clientFor } from "../../lib/queries";
+import { artistsQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import { ArtistContextMenu } from "../../components/menus";
 import type { Artist, ArtistIndex, ServerConfig } from "../../lib/subsonic";
@@ -97,7 +97,6 @@ function ArtistsBody(props: { server: ServerConfig }) {
 										<For each={section.artist}>
 											{(artist, i) => (
 												<ArtistCard
-													server={props.server}
 													client={client}
 													artist={artist}
 													index={i()}
@@ -133,36 +132,17 @@ function ArtistsBody(props: { server: ServerConfig }) {
 }
 
 function ArtistCard(props: {
-	server: ServerConfig;
 	client: SubsonicClient;
 	artist: Artist;
 	index?: number;
 }) {
-	const detail = createQuery(() =>
-		artistQuery(
-			{ client: props.client, serverId: props.server.id },
-			props.artist.id,
-		),
-	);
-
-	const coverSrc = createMemo(() => {
-		const full = detail.data;
-		const merged = {
-			id: props.artist.id,
-			artistImageUrl: full?.artistImageUrl || props.artist.artistImageUrl,
-			coverArt: full?.coverArt ?? props.artist.coverArt,
-			album: full?.album,
-		};
-		return artistCoverUrl(props.client, merged, 240);
-	});
-
-	const coverFallbackSrc = createMemo(() => {
-		const album = detail.data?.album?.find((a) => a.coverArt);
-		return album?.coverArt
-			? props.client.coverArtUrl(album.coverArt, 240)
-			: undefined;
-	});
-
+	// Navidrome (and most OpenSubsonic servers) populate `artistImageUrl`
+	// directly in getArtists — no per-card getArtist round-trip needed.
+	// Firing one query per card was the source of the lag and also starved
+	// the browser's image-loading slots, so the covers themselves never
+	// appeared. For the rare artist without an artistImageUrl we fall
+	// through to initials; the detail page's hero still cascades to an
+	// album cover.
 	return (
 		<ArtistContextMenu artist={props.artist}>
 			<MediaCard
@@ -173,8 +153,7 @@ function ArtistCard(props: {
 						? `${props.artist.albumCount} album${props.artist.albumCount === 1 ? "" : "s"}`
 						: undefined
 				}
-				coverSrc={coverSrc()}
-				coverFallbackSrc={coverFallbackSrc()}
+				coverSrc={artistCoverUrl(props.client, props.artist, 240)}
 				round
 				index={props.index}
 			/>
