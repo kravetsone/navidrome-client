@@ -1,8 +1,10 @@
-import { createMemo, createResource, For, Index, Show } from "solid-js";
+import { For, Index, Show } from "solid-js";
+import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
 import { SubsonicClient } from "../../lib/subsonic/client";
 import type { Album, AlbumListType, ServerConfig } from "../../lib/subsonic";
+import { albumListQuery } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import { SectionRail } from "../../components/SectionRail";
 import styles from "./HomeView.module.css";
@@ -47,53 +49,48 @@ export function HomeView() {
 			</header>
 
 			<Show when={activeServer()}>
-				{(server) => <Rails server={server()} />}
+				{(server) => (
+					<For each={RAILS}>
+						{(rail) => (
+							<AlbumRail
+								server={server()}
+								type={rail.type}
+								eyebrow={rail.eyebrow}
+								title={rail.title}
+								href={rail.href}
+							/>
+						)}
+					</For>
+				)}
 			</Show>
 		</div>
 	);
 }
 
-function Rails(props: { server: ServerConfig }) {
-	const client = createMemo(() => new SubsonicClient(props.server));
-
-	return (
-		<>
-			<For each={RAILS}>
-				{(rail) => (
-					<AlbumRail
-						client={client()}
-						type={rail.type}
-						eyebrow={rail.eyebrow}
-						title={rail.title}
-						href={rail.href}
-					/>
-				)}
-			</For>
-		</>
-	);
-}
-
 function AlbumRail(props: {
-	client: SubsonicClient;
+	server: ServerConfig;
 	type: AlbumListType;
 	eyebrow?: string;
 	title: string;
 	href: string;
 }) {
-	const [albums] = createResource(
-		() => ({ client: props.client, type: props.type }),
-		async ({ client, type }) => client.getAlbumList2({ type, size: 20 }),
+	const query = createQuery(() =>
+		albumListQuery(
+			{ client: new SubsonicClient(props.server), serverId: props.server.id },
+			props.type,
+			20,
+		),
 	);
 
 	return (
 		<SectionRail eyebrow={props.eyebrow} title={props.title} moreHref={props.href}>
-			<Show when={!albums.loading} fallback={<RailSkeleton />}>
+			<Show when={!query.isPending} fallback={<RailSkeleton />}>
 				<Show
-					when={(albums() ?? []).length > 0}
+					when={(query.data ?? []).length > 0}
 					fallback={<EmptyRail type={props.type} />}
 				>
-					<For each={albums()!}>
-						{(album) => <AlbumCell album={album} client={props.client} />}
+					<For each={query.data!}>
+						{(album) => <AlbumCell album={album} server={props.server} />}
 					</For>
 				</Show>
 			</Show>
@@ -101,14 +98,15 @@ function AlbumRail(props: {
 	);
 }
 
-function AlbumCell(props: { album: Album; client: SubsonicClient }) {
+function AlbumCell(props: { album: Album; server: ServerConfig }) {
+	const client = new SubsonicClient(props.server);
 	return (
 		<MediaCard
 			href={`/album/${encodeURIComponent(props.album.id)}`}
 			title={props.album.name}
 			subtitle={props.album.artist}
 			meta={props.album.year ? String(props.album.year) : undefined}
-			coverSrc={props.client.coverArtUrl(props.album.coverArt, 360)}
+			coverSrc={client.coverArtUrl(props.album.coverArt, 360)}
 		/>
 	);
 }

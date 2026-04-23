@@ -1,9 +1,11 @@
-import { createMemo, createResource, For, Index, Show } from "solid-js";
+import { For, Index, Show } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
 import { SubsonicClient } from "../../lib/subsonic/client";
 import type { AlbumListType } from "../../lib/subsonic";
+import { albumListQuery } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import styles from "./AlbumsView.module.css";
 
@@ -21,22 +23,6 @@ export function AlbumsView() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const activeServer = useStore($activeServer);
 	const sort = () => (searchParams.sort?.toString() as SortKey) || "recent";
-
-	const client = createMemo(() => {
-		const s = activeServer();
-		return s ? new SubsonicClient(s) : null;
-	});
-
-	const [albums] = createResource(
-		() => {
-			const c = client();
-			return c ? { client: c, type: sort() as AlbumListType } : null;
-		},
-		async (source) => {
-			if (!source) return [];
-			return source.client.getAlbumList2({ type: source.type, size: 500 });
-		},
-	);
 
 	return (
 		<div class={styles.page}>
@@ -61,30 +47,44 @@ export function AlbumsView() {
 				</div>
 			</header>
 
-			<Show when={!albums.loading} fallback={<GridSkeleton count={24} />}>
-				<Show
-					when={(albums() ?? []).length > 0}
-					fallback={<EmptyState />}
-				>
-					<div class={styles.grid}>
-						<For each={albums()!}>
-							{(album) => {
-								const c = client();
-								return (
-									<MediaCard
-										href={`/album/${encodeURIComponent(album.id)}`}
-										title={album.name}
-										subtitle={album.artist}
-										meta={album.year ? String(album.year) : undefined}
-										coverSrc={c?.coverArtUrl(album.coverArt, 360)}
-									/>
-								);
-							}}
-						</For>
-					</div>
-				</Show>
+			<Show when={activeServer()}>
+				{(server) => <AlbumsGrid server={server()} sort={sort()} />}
 			</Show>
 		</div>
+	);
+}
+
+function AlbumsGrid(props: { server: ReturnType<typeof $activeServer.get> & {}; sort: SortKey }) {
+	const client = new SubsonicClient(props.server);
+	const query = createQuery(() =>
+		albumListQuery(
+			{ client, serverId: props.server.id },
+			props.sort as AlbumListType,
+			500,
+		),
+	);
+
+	return (
+		<Show when={!query.isPending} fallback={<GridSkeleton count={24} />}>
+			<Show
+				when={(query.data ?? []).length > 0}
+				fallback={<EmptyState />}
+			>
+				<div class={styles.grid}>
+					<For each={query.data!}>
+						{(album) => (
+							<MediaCard
+								href={`/album/${encodeURIComponent(album.id)}`}
+								title={album.name}
+								subtitle={album.artist}
+								meta={album.year ? String(album.year) : undefined}
+								coverSrc={client.coverArtUrl(album.coverArt, 360)}
+							/>
+						)}
+					</For>
+				</div>
+			</Show>
+		</Show>
 	);
 }
 

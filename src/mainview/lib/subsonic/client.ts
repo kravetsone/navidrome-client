@@ -31,6 +31,18 @@ export function normalizeServerUrl(input: string): string {
 
 export type QueryValue = string | number | boolean | null | undefined;
 
+function avg(xs: number[]): number {
+	if (xs.length === 0) return 0;
+	return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+function stddev(xs: number[]): number {
+	if (xs.length < 2) return 0;
+	const m = avg(xs);
+	const variance = xs.reduce((s, v) => s + (v - m) ** 2, 0) / xs.length;
+	return Math.sqrt(variance);
+}
+
 export class SubsonicClient {
 	constructor(private readonly config: Pick<ServerConfig, "url" | "username" | "authMode" | "secret">) {}
 
@@ -216,76 +228,158 @@ export class SubsonicClient {
 	}
 
 	async speedTest(
-		options: { targetBytes?: number; timeoutMs?: number } = {},
+		options: {
+			targetBytes?: number;
+			timeoutMs?: number;
+			pingSamples?: number;
+			onProgress?: (snapshot: SpeedTestResult) => void;
+			signal?: AbortSignal;
+		} = {},
 	): Promise<SpeedTestResult> {
-		const targetBytes = options.targetBytes ?? 2 * 1024 * 1024;
-		const timeoutMs = options.timeoutMs ?? 8000;
+		const targetBytes = options.targetBytes ?? 4 * 1024 * 1024;
+		const timeoutMs = options.timeoutMs ?? 15000;
+		const sampleCount = options.pingSamples ?? 4;
+		const onProgress = options.onProgress;
 
-		const pingSamples: number[] = [];
-		for (let i = 0; i < 3; i++) {
+		const snapshot: SpeedTestResult = { phase: "ping", targetBytes };
+		const emit = () => onProgress?.({ ...snapshot });
+
+		emit();
+
+		// --- Ping / jitter ---
+		const pings: number[] = [];
+		for (let i = 0; i < sampleCount; i++) {
+			if (options.signal?.aborted) {
+				return { ...snapshot, phase: "cancelled" };
+			}
 			const t = performance.now();
 			try {
 				await this.ping();
-				pingSamples.push(performance.now() - t);
-			} catch {
-				break;
+				pings.push(performance.now() - t);
+			} catch (e) {
+				return {
+					...snapshot,
+					phase: "error",
+					error: e instanceof Error ? e.message : String(e),
+				};
 			}
+			snapshot.pingMs = avg(pings);
+			snapshot.jitterMs = stddev(pings);
+			emit();
 		}
-		const pingMs =
-			pingSamples.length > 0
-				? pingSamples.reduce((a, b) => a + b, 0) / pingSamples.length
-				: 0;
 
-		let throughputMbps: number | undefined;
-		let bytes: number | undefined;
-		let durationMs: number | undefined;
+		// --- Throughput ---
+		snapshot.phase = "stream";
+		emit();
 
+		let songId: string | undefined;
 		try {
 			const resp = (await this.call("getRandomSongs", { size: 1 })) as SubsonicResponse & {
 				randomSongs?: { song?: Array<{ id: string }> };
 			};
-			const song = resp.randomSongs?.song?.[0];
-			if (song?.id) {
-				const url = this.buildUrl("stream", { id: song.id, maxBitRate: 320 });
-				const controller = new AbortController();
-				const timeout = setTimeout(() => controller.abort(), timeoutMs);
-				try {
-					const start = performance.now();
-					const streamRes = await fetch(url, {
-						signal: controller.signal,
-						credentials: "omit",
-						headers: { Range: `bytes=0-${targetBytes - 1}` },
-					});
-					if (streamRes.ok && streamRes.body) {
-						const reader = streamRes.body.getReader();
-						let total = 0;
-						while (total < targetBytes) {
-							const { done, value } = await reader.read();
-							if (done) break;
-							total += value?.byteLength ?? 0;
-						}
-						const elapsed = performance.now() - start;
-						try {
-							await reader.cancel();
-						} catch {}
-						bytes = total;
-						durationMs = elapsed;
-						if (elapsed > 0 && total > 0) {
-							throughputMbps = (total * 8) / (elapsed / 1000) / 1_000_000;
-						}
-					}
-				} finally {
-					clearTimeout(timeout);
-					try {
-						controller.abort();
-					} catch {}
-				}
-			}
+			songId = resp.randomSongs?.song?.[0]?.id;
 		} catch {
-			// throughput test is best-effort — empty libraries or aborted reads are fine
+			// non-fatal — we still have ping results
 		}
 
-		return { pingMs, throughputMbps, bytes, durationMs };
+		if (!songId) {
+			snapshot.phase = "done";
+			emit();
+			return { ...snapshot };
+		}
+
+		const url = this.buildUrl("stream", { id: songId, maxBitRate: 320 });
+		const controller = new AbortController();
+		const onAbort = () => controller.abort();
+		options.signal?.addEventListener("abort", onAbort, { once: true });
+		const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+		try {
+			const start = performance.now();
+			const res = await fetch(url, {
+				signal: controller.signal,
+				credentials: "omit",
+				headers: { Range: `bytes=0-${targetBytes - 1}` },
+			});
+			snapshot.ttfbMs = performance.now() - start;
+			emit();
+
+			if (!res.ok || !res.body) {
+				snapshot.phase = "done";
+				emit();
+				return { ...snapshot };
+			}
+
+			const reader = res.body.getReader();
+			let total = 0;
+			let peakMbps = 0;
+			let lastEmitAt = 0;
+			let windowBytes = 0;
+			let windowStart = start;
+
+			while (total < targetBytes) {
+				if (options.signal?.aborted) {
+					try {
+						await reader.cancel();
+					} catch {}
+					snapshot.phase = "cancelled";
+					emit();
+					return { ...snapshot };
+				}
+				const { done, value } = await reader.read();
+				if (done) break;
+				const chunk = value?.byteLength ?? 0;
+				total += chunk;
+				windowBytes += chunk;
+
+				const now = performance.now();
+				const elapsed = now - start;
+				const windowElapsed = now - windowStart;
+				if (windowElapsed >= 250) {
+					const instant = (windowBytes * 8) / (windowElapsed / 1000) / 1_000_000;
+					if (instant > peakMbps) peakMbps = instant;
+					windowBytes = 0;
+					windowStart = now;
+				}
+
+				if (now - lastEmitAt >= 100) {
+					snapshot.bytes = total;
+					snapshot.durationMs = elapsed;
+					snapshot.peakMbps = peakMbps || undefined;
+					if (elapsed > 0) {
+						snapshot.throughputMbps = (total * 8) / (elapsed / 1000) / 1_000_000;
+					}
+					lastEmitAt = now;
+					emit();
+				}
+			}
+
+			try {
+				await reader.cancel();
+			} catch {}
+
+			const elapsed = performance.now() - start;
+			snapshot.bytes = total;
+			snapshot.durationMs = elapsed;
+			snapshot.peakMbps = peakMbps || snapshot.peakMbps;
+			if (elapsed > 0 && total > 0) {
+				snapshot.throughputMbps = (total * 8) / (elapsed / 1000) / 1_000_000;
+			}
+			snapshot.phase = "done";
+			emit();
+			return { ...snapshot };
+		} catch (e) {
+			const aborted =
+				(e instanceof DOMException && e.name === "AbortError") ||
+				controller.signal.aborted;
+			snapshot.phase = aborted ? "cancelled" : "error";
+			if (!aborted) snapshot.error = e instanceof Error ? e.message : String(e);
+			emit();
+			return { ...snapshot };
+		} finally {
+			clearTimeout(timeout);
+			options.signal?.removeEventListener("abort", onAbort);
+		}
 	}
 
 	coverArtUrl(id: string | undefined, size?: number): string | undefined {

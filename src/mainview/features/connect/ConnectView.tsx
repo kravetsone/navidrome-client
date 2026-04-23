@@ -1,16 +1,15 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
-import { ArrowRight, ChevronRight, AlertTriangle, CheckCircle2, ExternalLink, Gauge } from "lucide-solid";
+import { ArrowRight, ChevronRight, AlertTriangle, CheckCircle2, ExternalLink } from "lucide-solid";
 import { probeServer, draftToConfig } from "../../lib/subsonic/probe";
 import { InvalidEndpointError, NetworkError, SubsonicError } from "../../lib/subsonic/types";
-import type { SpeedTestResult } from "../../lib/subsonic/types";
 import { addServer } from "../../stores/servers";
 import styles from "./ConnectView.module.css";
 
 type AuthMode = "password" | "apiKey";
 
 type Feedback =
-	| { kind: "success"; title: string; detail: string; speed?: SpeedTestResult }
+	| { kind: "success"; title: string; detail: string }
 	| { kind: "error"; title: string; detail: string; helpUrl?: string };
 
 const DEFAULT_URL = "https://";
@@ -67,12 +66,11 @@ export function ConnectView() {
 				kind: "success",
 				title: "Connected",
 				detail: `${result.caps.type === "navidrome" ? "Navidrome" : result.caps.openSubsonic ? "OpenSubsonic" : "Subsonic"} ${result.caps.serverVersion}`,
-				speed: result.speed,
 			});
 
 			setTimeout(() => {
 				navigate(searchParams.returnTo?.toString() ?? "/", { replace: true });
-			}, 1400);
+			}, 600);
 		} catch (err) {
 			if (err instanceof SubsonicError) {
 				setFeedback({
@@ -231,32 +229,12 @@ export function ConnectView() {
 						{(fb) => {
 							const value = fb();
 							const helpUrl = value.kind === "error" ? value.helpUrl : undefined;
-							const speed = value.kind === "success" ? value.speed : undefined;
 							return (
 								<div class={styles.feedback} data-kind={value.kind}>
 									{value.kind === "error" ? <AlertTriangle /> : <CheckCircle2 />}
 									<div class={styles.feedbackBody}>
 										<span class={styles.feedbackTitle}>{value.title}</span>
 										<span class={styles.feedbackHint}>{value.detail}</span>
-										<Show when={speed}>
-											{(s) => (
-												<div class={styles.speedRow}>
-													<Gauge size={12} />
-													<span class={styles.speedMetric}>
-														<span class={styles.speedLabel}>Latency</span>
-														<span class={styles.speedValue}>{formatPing(s().pingMs)}</span>
-													</span>
-													<Show when={s().throughputMbps !== undefined}>
-														<span class={styles.speedMetric}>
-															<span class={styles.speedLabel}>Throughput</span>
-															<span class={styles.speedValue}>
-																{formatThroughput(s().throughputMbps!)}
-															</span>
-														</span>
-													</Show>
-												</div>
-											)}
-										</Show>
 										<Show when={helpUrl}>
 											{(href) => (
 												<a
@@ -289,19 +267,6 @@ export function ConnectView() {
 			</div>
 		</div>
 	);
-}
-
-function formatPing(ms: number): string {
-	if (!Number.isFinite(ms) || ms <= 0) return "—";
-	if (ms < 10) return `${ms.toFixed(1)} ms`;
-	return `${Math.round(ms)} ms`;
-}
-
-function formatThroughput(mbps: number): string {
-	if (!Number.isFinite(mbps) || mbps <= 0) return "—";
-	if (mbps >= 100) return `${Math.round(mbps)} Mbps`;
-	if (mbps >= 10) return `${mbps.toFixed(1)} Mbps`;
-	return `${mbps.toFixed(2)} Mbps`;
 }
 
 function authErrorTitle(code: number): string {

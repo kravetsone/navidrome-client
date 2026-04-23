@@ -1,7 +1,6 @@
 import {
 	createEffect,
 	createMemo,
-	createResource,
 	createSignal,
 	For,
 	Match,
@@ -13,10 +12,12 @@ import {
 import { Portal } from "solid-js/web";
 import { useNavigate } from "@solidjs/router";
 import { useStore } from "@nanostores/solid";
+import { createQuery } from "@tanstack/solid-query";
 import { Search } from "lucide-solid";
 import { $activeServer } from "../../stores/servers";
 import { SubsonicClient } from "../../lib/subsonic/client";
 import type { SearchResult } from "../../lib/subsonic";
+import { searchQuery } from "../../lib/queries";
 import { CoverArt } from "../../components/CoverArt";
 import styles from "./CommandPalette.module.css";
 
@@ -78,9 +79,10 @@ export function CommandPalette() {
 	const activeServer = useStore($activeServer);
 	const navigate = useNavigate();
 
-	const client = createMemo(() => {
-		const s = activeServer();
-		return s ? new SubsonicClient(s) : null;
+	const ctx = createMemo(() => {
+		const server = activeServer();
+		if (!server) return null;
+		return { client: new SubsonicClient(server), serverId: server.id };
 	});
 
 	let inputRef!: HTMLInputElement;
@@ -117,25 +119,13 @@ export function CommandPalette() {
 	});
 	onCleanup(() => debounceTimer && clearTimeout(debounceTimer));
 
-	const [result] = createResource(
-		() => {
-			const c = client();
-			const q = debounced().trim();
-			if (!c || q.length < 1) return null;
-			return { client: c, query: q };
-		},
-		async (source) => {
-			if (!source) return {} as SearchResult;
-			return source.client.search3({
-				query: source.query,
-				artistCount: 4,
-				albumCount: 6,
-				songCount: 8,
-			});
-		},
+	const search = createQuery(() =>
+		searchQuery(ctx(), debounced().trim(), { artist: 4, album: 6, song: 8 }),
 	);
 
+	const result = () => (search.data ?? {}) as SearchResult;
 	const items = createMemo(() => flatten(result()));
+	const hasActiveSearch = () => debounced().trim().length > 0;
 
 	const handleItemKey = (e: KeyboardEvent) => {
 		const list = items();
@@ -153,6 +143,11 @@ export function CommandPalette() {
 				navigate(item.href);
 			}
 		}
+	};
+
+	const handleSelect = (item: FlatItem) => {
+		setOpen(false);
+		navigate(item.href);
 	};
 
 	return (
@@ -192,22 +187,19 @@ export function CommandPalette() {
 									</div>
 								}
 							>
-								<Match when={debounced().trim().length > 0 && result.loading}>
-									<div class={styles.hint}>Searching…</div>
-								</Match>
-								<Match when={debounced().trim().length > 0 && items().length === 0 && !result.loading}>
-									<div class={styles.hint}>No results for "{debounced()}".</div>
-								</Match>
-								<Match when={items().length > 0}>
+								<Match when={hasActiveSearch() && items().length > 0}>
 									<ResultSections
 										result={result()}
 										active={active()}
-										client={client()}
-										onSelect={(item) => {
-											setOpen(false);
-											navigate(item.href);
-										}}
+										client={ctx()?.client ?? null}
+										onSelect={handleSelect}
 									/>
+								</Match>
+								<Match when={hasActiveSearch() && search.isFetching && items().length === 0}>
+									<div class={styles.hint}>Searching…</div>
+								</Match>
+								<Match when={hasActiveSearch() && items().length === 0 && !search.isFetching}>
+									<div class={styles.hint}>No results for "{debounced()}".</div>
 								</Match>
 							</Switch>
 						</div>
@@ -231,14 +223,14 @@ export function CommandPalette() {
 }
 
 function ResultSections(props: {
-	result: SearchResult | undefined;
+	result: SearchResult;
 	active: number;
 	client: SubsonicClient | null;
 	onSelect: (item: FlatItem) => void;
 }) {
 	const flat = createMemo(() => flatten(props.result));
-	const artists = () => (props.result?.artist ?? []).length;
-	const albums = () => (props.result?.album ?? []).length;
+	const artists = () => (props.result.artist ?? []).length;
+	const albums = () => (props.result.album ?? []).length;
 
 	return (
 		<>
@@ -274,7 +266,7 @@ function ResultSections(props: {
 				</div>
 			</Show>
 
-			<Show when={(props.result?.song ?? []).length > 0}>
+			<Show when={(props.result.song ?? []).length > 0}>
 				<div class={styles.section}>
 					<span class={styles.sectionLabel}>Songs</span>
 					<For each={flat().slice(artists() + albums())}>

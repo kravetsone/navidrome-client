@@ -62,9 +62,17 @@ export class InvalidEndpointError extends Error {
 	}
 }
 
+export type SpeedTestPhase = "idle" | "ping" | "stream" | "done" | "error" | "cancelled";
+
 export interface SpeedTestResult {
-	pingMs: number;
+	phase: SpeedTestPhase;
+	pingMs?: number;
+	jitterMs?: number;
+	ttfbMs?: number;
 	throughputMbps?: number;
+	peakMbps?: number;
 	bytes?: number;
+	targetBytes?: number;
 	durationMs?: number;
+	error?: string;
 }
