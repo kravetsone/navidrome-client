@@ -207,9 +207,11 @@ export function NowPlayingView() {
 						/>
 					</Show>
 
+					<div class={`${styles.dragStrip} electrobun-webkit-app-region-drag`} />
+
 					<button
 						type="button"
-						class={styles.closeBtn}
+						class={`${styles.closeBtn} electrobun-webkit-app-region-no-drag`}
 						onClick={closeNowPlaying}
 						aria-label="Close now playing"
 						title="Close"

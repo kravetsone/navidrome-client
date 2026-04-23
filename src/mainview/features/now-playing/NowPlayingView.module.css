@@ -53,6 +53,23 @@
 }
 
 /*
+ * Thin draggable strip along the top edge. The overlay covers the AppShell
+ * titlebar (the normal drag region), so without this you can't move the
+ * window while Now Playing is open. Class must also be applied raw on the
+ * element — Electrobun's runtime scans the DOM for literal
+ * `electrobun-webkit-app-region-drag`, which CSS Modules would hash.
+ */
+.dragStrip {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: var(--titlebar-height);
+	/* No z-index — closeBtn comes after in DOM and is also positioned,
+	   so it naturally stacks above the strip for its 32×32 hit area. */
+}
+
+/*
  * Ghost circle in the far top-right — maximum distance from the native
  * traffic lights on the left, reads as a desktop modal close button.
  * Tinted by the ambient palette so it feels stitched to the current album
