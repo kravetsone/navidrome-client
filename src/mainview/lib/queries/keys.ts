@@ -24,6 +24,20 @@ export const qk = {
 			filters?.toYear ?? null,
 		] as const,
 
+	albumListInfinite: (
+		serverId: string,
+		type: AlbumListType,
+		filters?: { genre?: string; fromYear?: number; toYear?: number },
+	) =>
+		[
+			...qk.server(serverId),
+			"albumListInfinite",
+			type,
+			filters?.genre ?? null,
+			filters?.fromYear ?? null,
+			filters?.toYear ?? null,
+		] as const,
+
 	album: (serverId: string, id: string) =>
 		[...qk.server(serverId), "album", id] as const,
 

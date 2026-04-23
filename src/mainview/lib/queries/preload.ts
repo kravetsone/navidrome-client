@@ -5,6 +5,7 @@ import { extractAmbientPalette } from "../palette";
 import { queryClient } from "./client";
 import { clientFor } from "./useActiveClient";
 import {
+	albumListInfiniteQuery,
 	albumListQuery,
 	albumQuery,
 	artistQuery,
@@ -41,7 +42,9 @@ export const preloadAlbums: RoutePreloadFunc = ({ location }) => {
 	const toYear = Number(location.query.toYear) || undefined;
 	const filters =
 		genre || fromYear || toYear ? { genre, fromYear, toYear } : undefined;
-	void queryClient.prefetchQuery(albumListQuery(ctx, sort, 500, filters));
+	void queryClient.prefetchInfiniteQuery(
+		albumListInfiniteQuery(ctx, sort, filters),
+	);
 };
 
 function preloadPalette(url: string) {

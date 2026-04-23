@@ -1,12 +1,16 @@
-import { For, Index, Show, createMemo, createSignal } from "solid-js";
+import { For, Index, Show, createMemo, createSignal, onCleanup } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { Popover } from "@kobalte/core/popover";
 import { SlidersHorizontal, X } from "lucide-solid";
 import { $activeServer } from "../../stores/servers";
 import type { AlbumListType, ServerConfig } from "../../lib/subsonic";
-import { albumListQuery, clientFor, genresQuery } from "../../lib/queries";
+import {
+	albumListInfiniteQuery,
+	clientFor,
+	genresQuery,
+} from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import { AlbumContextMenu } from "../../components/menus";
 import styles from "./AlbumsView.module.css";
@@ -278,23 +282,42 @@ function AlbumsGrid(props: {
 	filters: Filters;
 }) {
 	const client = clientFor(props.server);
-	const query = createQuery(() =>
-		albumListQuery(
+	const query = createInfiniteQuery(() =>
+		albumListInfiniteQuery(
 			{ client, serverId: props.server.id },
 			props.type,
-			500,
 			props.filters,
 		),
 	);
 
+	const albums = createMemo(() =>
+		(query.data?.pages ?? []).flat(),
+	);
+
+	const attachSentinel = (el: HTMLDivElement) => {
+		const io = new IntersectionObserver(
+			(entries) => {
+				for (const e of entries) {
+					if (
+						e.isIntersecting &&
+						query.hasNextPage &&
+						!query.isFetchingNextPage
+					) {
+						void query.fetchNextPage();
+					}
+				}
+			},
+			{ rootMargin: "600px 0px" },
+		);
+		io.observe(el);
+		onCleanup(() => io.disconnect());
+	};
+
 	return (
 		<Show when={!query.isPending} fallback={<GridSkeleton count={24} />}>
-			<Show
-				when={(query.data ?? []).length > 0}
-				fallback={<EmptyState />}
-			>
+			<Show when={albums().length > 0} fallback={<EmptyState />}>
 				<div class={styles.grid}>
-					<For each={query.data!}>
+					<For each={albums()}>
 						{(album, i) => (
 							<AlbumContextMenu album={album}>
 								<MediaCard
@@ -309,6 +332,16 @@ function AlbumsGrid(props: {
 						)}
 					</For>
 				</div>
+				<Show when={query.hasNextPage}>
+					<div
+						ref={attachSentinel}
+						aria-hidden="true"
+						style={{ height: "1px" }}
+					/>
+				</Show>
+				<Show when={query.isFetchingNextPage}>
+					<GridSkeleton count={12} />
+				</Show>
 			</Show>
 		</Show>
 	);

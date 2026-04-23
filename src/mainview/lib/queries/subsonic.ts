@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/solid-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/solid-query";
 import type { SubsonicClient } from "../subsonic/client";
 import type { AlbumListType, SearchResult, StructuredLyrics } from "../subsonic";
 import { fetchFromLrclib } from "../lyrics/lrclib";
@@ -38,6 +38,31 @@ export function albumListQuery(
 				fromYear: filters?.fromYear,
 				toYear: filters?.toYear,
 			}),
+		staleTime: FIVE_MIN,
+	});
+}
+
+export const ALBUM_PAGE_SIZE = 100;
+
+export function albumListInfiniteQuery(
+	{ client, serverId }: ClientCtx,
+	type: AlbumListType,
+	filters?: { genre?: string; fromYear?: number; toYear?: number },
+) {
+	return infiniteQueryOptions({
+		queryKey: qk.albumListInfinite(serverId, type, filters),
+		queryFn: ({ pageParam }) =>
+			client.getAlbumList2({
+				type,
+				size: ALBUM_PAGE_SIZE,
+				offset: pageParam,
+				genre: filters?.genre,
+				fromYear: filters?.fromYear,
+				toYear: filters?.toYear,
+			}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+			lastPage.length < ALBUM_PAGE_SIZE ? undefined : lastPageParam + ALBUM_PAGE_SIZE,
 		staleTime: FIVE_MIN,
 	});
 }
