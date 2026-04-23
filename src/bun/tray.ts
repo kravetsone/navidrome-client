@@ -22,15 +22,20 @@ function trayTitle(): string {
 async function dispatch(action: PlayerAction) {
 	if (!mainWindowRef) return;
 	try {
+		// RPC proxy lives on mainWindow.webview.rpc — NOT on mainWindow.rpc
+		// (BrowserWindow takes rpc as a constructor option but never stores
+		// it on itself; only the underlying BrowserView does).
 		await (
 			mainWindowRef as {
-				rpc?: {
-					request?: {
-						playerControl?: (p: { action: PlayerAction }) => Promise<void>;
+				webview?: {
+					rpc?: {
+						request?: {
+							playerControl?: (p: { action: PlayerAction }) => Promise<void>;
+						};
 					};
 				};
 			}
-		).rpc?.request?.playerControl?.({ action });
+		).webview?.rpc?.request?.playerControl?.({ action });
 	} catch (err) {
 		console.error("Tray dispatch failed:", err);
 	}
