@@ -1,5 +1,8 @@
-import { BrowserWindow, Updater } from "electrobun/bun";
+import { BrowserView, BrowserWindow, Updater } from "electrobun/bun";
 import { installApplicationMenu } from "./menu";
+import { discordPresence } from "./discord-presence";
+import type { AppRPCSchema } from "../shared/rpc-schema";
+import type { PresencePayload } from "../shared/discord";
 
 installApplicationMenu();
 
@@ -24,17 +27,37 @@ async function getMainViewUrl(): Promise<string> {
 
 const url = await getMainViewUrl();
 
+const rpc = BrowserView.defineRPC<AppRPCSchema>({
+	handlers: {
+		requests: {
+			setDiscordPresence: (payload: PresencePayload) => {
+				discordPresence.setActivity(payload);
+			},
+			clearDiscordPresence: () => {
+				discordPresence.clear();
+			},
+		},
+	},
+});
+
 const mainWindow = new BrowserWindow({
 	title: "Navidrome",
 	url,
 	titleBarStyle: "hiddenInset",
 	transparent: true,
+	rpc,
 	frame: {
 		width: 1200,
 		height: 780,
 		x: 160,
 		y: 120,
 	},
+});
+
+discordPresence.start();
+
+process.on("beforeExit", () => {
+	discordPresence.stop();
 });
 
 console.log("Navidrome client started", mainWindow.id);
