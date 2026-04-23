@@ -3,10 +3,20 @@ import { useStore } from "@nanostores/solid";
 import { Disc } from "lucide-solid";
 import { Play } from "lucide-solid";
 import type { Song } from "../lib/subsonic";
-import { $currentSong, $isPlaying } from "../stores/player";
+import { $currentSong, $isPlaying, $queueOpen } from "../stores/player";
 import { HeartButton } from "./HeartButton";
 import { SongContextMenu } from "./menus";
 import styles from "./TrackList.module.css";
+
+const SONG_DRAG_MIME = "application/x-navidrome-song";
+
+function startSongDrag(e: DragEvent, song: Song) {
+	if (!e.dataTransfer) return;
+	e.dataTransfer.effectAllowed = "copyMove";
+	e.dataTransfer.setData(SONG_DRAG_MIME, JSON.stringify(song));
+	e.dataTransfer.setData("text/plain", song.title);
+	if (!$queueOpen.get()) $queueOpen.set(true);
+}
 
 function formatTrackDuration(seconds?: number): string {
 	if (!seconds || !Number.isFinite(seconds)) return "—";
@@ -143,6 +153,8 @@ function TrackRow(props: {
 			triggerClass={styles.track}
 			triggerProps={{
 				"data-active": props.active,
+				draggable: true,
+				onDragStart: (e: DragEvent) => startSongDrag(e, props.song),
 				onDblClick: () => props.onPlay(props.index),
 			}}
 		>

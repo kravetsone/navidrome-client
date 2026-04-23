@@ -15,15 +15,17 @@ import {
 	SortableProvider,
 	closestCenter,
 	createSortable,
-	type DragEvent,
+	type DragEvent as SortableDragEvent,
 } from "@thisbeyond/solid-dnd";
 import { ChevronDown, GripVertical, X } from "lucide-solid";
 import {
 	$queue,
 	$currentIndex,
 	$queueOpen,
+	addToQueue,
 	closeQueue,
 	jumpTo,
+	playNextInQueue,
 	removeFromQueue,
 	reorderQueue,
 } from "../../stores/player";
@@ -33,10 +35,24 @@ import type { Song } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
 import styles from "./QueuePanel.module.css";
 
+const SONG_DRAG_MIME = "application/x-navidrome-song";
+
 interface RowEntry {
 	id: string;
 	song: Song;
 	queueIndex: number;
+}
+
+function readDroppedSong(e: DragEvent): Song | null {
+	const data = e.dataTransfer?.getData(SONG_DRAG_MIME);
+	if (!data) return null;
+	try {
+		const song = JSON.parse(data) as Song;
+		if (!song || typeof song.id !== "string") return null;
+		return song;
+	} catch {
+		return null;
+	}
 }
 
 function makeRows(songs: Song[], offset: number): RowEntry[] {
@@ -61,6 +77,8 @@ export function QueuePanel() {
 	const currentIndex = useStore($currentIndex);
 	const activeServer = useStore($activeServer);
 	const [historyOpen, setHistoryOpen] = createSignal(false);
+	const [dropActive, setDropActive] = createSignal(false);
+	let dragDepth = 0;
 
 	const currentSong = createMemo<Song | null>(() => {
 		const q = queue();
@@ -100,7 +118,7 @@ export function QueuePanel() {
 		onCleanup(() => window.removeEventListener("keydown", onKey));
 	});
 
-	const handleDragEnd = (e: DragEvent) => {
+	const handleDragEnd = (e: SortableDragEvent) => {
 		if (!e.draggable || !e.droppable) return;
 		const fromId = String(e.draggable.id);
 		const toId = String(e.droppable.id);
@@ -112,10 +130,48 @@ export function QueuePanel() {
 		reorderQueue(from, to);
 	};
 
+	const handleNativeDragOver = (e: DragEvent) => {
+		if (!e.dataTransfer?.types.includes(SONG_DRAG_MIME)) return;
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "copy";
+	};
+
+	const handleNativeDragEnter = (e: DragEvent) => {
+		if (!e.dataTransfer?.types.includes(SONG_DRAG_MIME)) return;
+		dragDepth += 1;
+		setDropActive(true);
+	};
+
+	const handleNativeDragLeave = (e: DragEvent) => {
+		if (!e.dataTransfer?.types.includes(SONG_DRAG_MIME)) return;
+		dragDepth = Math.max(0, dragDepth - 1);
+		if (dragDepth === 0) setDropActive(false);
+	};
+
+	const handleNativeDrop = (mode: "append" | "next") => (e: DragEvent) => {
+		const song = readDroppedSong(e);
+		if (!song) return;
+		e.preventDefault();
+		e.stopPropagation();
+		dragDepth = 0;
+		setDropActive(false);
+		if (mode === "next") playNextInQueue(song);
+		else addToQueue(song);
+	};
+
 	return (
 		<Show when={open()}>
 			<Portal>
-				<aside class={styles.panel} role="complementary" aria-label="Queue">
+				<aside
+					class={styles.panel}
+					role="complementary"
+					aria-label="Queue"
+					data-drop-active={dropActive()}
+					onDragEnter={handleNativeDragEnter}
+					onDragOver={handleNativeDragOver}
+					onDragLeave={handleNativeDragLeave}
+					onDrop={handleNativeDrop("append")}
+				>
 					<header class={styles.header}>
 						<h2 class={styles.title}>Queue</h2>
 						<button
@@ -131,9 +187,19 @@ export function QueuePanel() {
 					<div class={styles.scroll}>
 						<Show when={currentSong()}>
 							{(song) => (
-								<section class={styles.section}>
+								<section
+									class={styles.section}
+									data-drop-zone="next"
+									onDragOver={handleNativeDragOver}
+									onDrop={handleNativeDrop("next")}
+								>
 									<span class={styles.sectionLabel}>Now playing</span>
 									<NowPlayingRow song={song()} cover={coverFor(song())} />
+									<Show when={dropActive()}>
+										<span class={styles.dropHint}>
+											Drop to play next
+										</span>
+									</Show>
 								</section>
 							)}
 						</Show>
