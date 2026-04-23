@@ -1,10 +1,15 @@
-import type { JSX } from "solid-js";
+import { onMount, type JSX } from "solid-js";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "./PlayerBar";
 import { CommandPalette } from "../features/search/CommandPalette";
+import { audioEngine } from "../lib/player/engine";
 import styles from "./AppShell.module.css";
 
 export function AppShell(props: { children: JSX.Element }) {
+	let audioRef: HTMLAudioElement | undefined;
+	onMount(() => {
+		if (audioRef) audioEngine.attach(audioRef);
+	});
 	return (
 		<div class={styles.shell}>
 			<div class={styles.ambient} />
@@ -19,6 +24,7 @@ export function AppShell(props: { children: JSX.Element }) {
 				<PlayerBar />
 			</footer>
 			<CommandPalette />
+			<audio ref={audioRef} style={{ display: "none" }} />
 		</div>
 	);
 }
