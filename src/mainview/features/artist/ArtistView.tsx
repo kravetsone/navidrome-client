@@ -8,6 +8,7 @@ import type { ServerConfig } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
 import { HeartButton } from "../../components/HeartButton";
 import { MediaCard } from "../../components/MediaCard";
+import { AlbumContextMenu } from "../../components/menus";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
@@ -36,15 +37,15 @@ function ArtistBody(props: { server: ServerConfig; id: string }) {
 		const a = query.data;
 		if (!a) return undefined;
 		return (
-			a.artistImageUrl ??
-			client.coverArtUrl(a.coverArt ?? a.id, 360)
+			a.artistImageUrl ||
+			client.coverArtUrl(a.coverArt || a.id, 360)
 		);
 	});
 
 	const paletteUrl = createMemo(() => {
 		const a = query.data;
 		if (!a) return undefined;
-		return a.artistImageUrl ?? client.coverArtUrl(a.coverArt ?? a.id, 96);
+		return a.artistImageUrl || client.coverArtUrl(a.coverArt || a.id, 96);
 	});
 
 	createEffect(() => {
@@ -104,14 +105,16 @@ function ArtistBody(props: { server: ServerConfig; id: string }) {
 									<div class={styles.grid}>
 										<For each={albums()}>
 											{(album) => (
-												<MediaCard
-													href={`/album/${encodeURIComponent(album.id)}`}
-													title={album.name}
-													subtitle={
-														album.year ? String(album.year) : undefined
-													}
-													coverSrc={client.coverArtUrl(album.coverArt, 360)}
-												/>
+												<AlbumContextMenu album={album}>
+													<MediaCard
+														href={`/album/${encodeURIComponent(album.id)}`}
+														title={album.name}
+														subtitle={
+															album.year ? String(album.year) : undefined
+														}
+														coverSrc={client.coverArtUrl(album.coverArt, 360)}
+													/>
+												</AlbumContextMenu>
 											)}
 										</For>
 									</div>

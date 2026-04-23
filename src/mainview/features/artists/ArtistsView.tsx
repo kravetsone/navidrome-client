@@ -4,6 +4,7 @@ import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
 import { artistsQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
+import { ArtistContextMenu } from "../../components/menus";
 import type { ServerConfig } from "../../lib/subsonic";
 import styles from "./ArtistsView.module.css";
 
@@ -56,20 +57,22 @@ function ArtistsBody(props: { server: ServerConfig }) {
 									<div class={styles.grid}>
 										<For each={section.artist}>
 											{(artist) => (
-												<MediaCard
-													href={`/artist/${encodeURIComponent(artist.id)}`}
-													title={artist.name}
-													subtitle={
-														artist.albumCount != null
-															? `${artist.albumCount} album${artist.albumCount === 1 ? "" : "s"}`
-															: undefined
-													}
-													coverSrc={
-														artist.artistImageUrl ??
-														client.coverArtUrl(artist.coverArt ?? artist.id, 240)
-													}
-													round
-												/>
+												<ArtistContextMenu artist={artist}>
+													<MediaCard
+														href={`/artist/${encodeURIComponent(artist.id)}`}
+														title={artist.name}
+														subtitle={
+															artist.albumCount != null
+																? `${artist.albumCount} album${artist.albumCount === 1 ? "" : "s"}`
+																: undefined
+														}
+														coverSrc={
+															artist.artistImageUrl ||
+															client.coverArtUrl(artist.coverArt || artist.id, 240)
+														}
+														round
+													/>
+												</ArtistContextMenu>
 											)}
 										</For>
 									</div>

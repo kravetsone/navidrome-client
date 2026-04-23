@@ -6,6 +6,7 @@ import { $activeServer } from "../../stores/servers";
 import type { AlbumListType } from "../../lib/subsonic";
 import { albumListQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
+import { AlbumContextMenu } from "../../components/menus";
 import styles from "./AlbumsView.module.css";
 
 type SortKey = "recent" | "newest" | "frequent" | "alphabeticalByName" | "starred" | "random";
@@ -72,13 +73,15 @@ function AlbumsGrid(props: { server: ReturnType<typeof $activeServer.get> & {}; 
 				<div class={styles.grid}>
 					<For each={query.data!}>
 						{(album) => (
-							<MediaCard
-								href={`/album/${encodeURIComponent(album.id)}`}
-								title={album.name}
-								subtitle={album.artist}
-								meta={album.year ? String(album.year) : undefined}
-								coverSrc={client.coverArtUrl(album.coverArt, 360)}
-							/>
+							<AlbumContextMenu album={album}>
+								<MediaCard
+									href={`/album/${encodeURIComponent(album.id)}`}
+									title={album.name}
+									subtitle={album.artist}
+									meta={album.year ? String(album.year) : undefined}
+									coverSrc={client.coverArtUrl(album.coverArt, 360)}
+								/>
+							</AlbumContextMenu>
 						)}
 					</For>
 				</div>

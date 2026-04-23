@@ -469,4 +469,8 @@ export class SubsonicClient {
 			{ stable: true },
 		);
 	}
+
+	downloadUrl(id: string): string {
+		return this.buildUrl("download", { id }, { stable: true });
+	}
 }

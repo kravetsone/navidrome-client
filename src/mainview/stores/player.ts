@@ -139,3 +139,75 @@ export function openNowPlaying() {
 export function closeNowPlaying() {
 	$nowPlayingOpen.set(false);
 }
+
+export function addToQueue(songs: Song | Song[]) {
+	const list = Array.isArray(songs) ? songs : [songs];
+	if (list.length === 0) return;
+	const q = $queue.get();
+	if (q.length === 0) {
+		playQueue(list, 0);
+		return;
+	}
+	$queue.set([...q, ...list]);
+}
+
+export function playNextInQueue(songs: Song | Song[]) {
+	const list = Array.isArray(songs) ? songs : [songs];
+	if (list.length === 0) return;
+	const q = $queue.get();
+	if (q.length === 0) {
+		playQueue(list, 0);
+		return;
+	}
+	const idx = $currentIndex.get();
+	const insertAt = Math.max(0, idx) + 1;
+	$queue.set([...q.slice(0, insertAt), ...list, ...q.slice(insertAt)]);
+}
+
+export function jumpTo(index: number) {
+	const q = $queue.get();
+	if (index < 0 || index >= q.length) return;
+	$currentIndex.set(index);
+	$isPlaying.set(true);
+}
+
+export function reorderQueue(fromIndex: number, toIndex: number) {
+	const q = $queue.get();
+	if (fromIndex === toIndex) return;
+	if (fromIndex < 0 || fromIndex >= q.length) return;
+	if (toIndex < 0 || toIndex >= q.length) return;
+	const copy = q.slice();
+	const [moved] = copy.splice(fromIndex, 1);
+	if (!moved) return;
+	copy.splice(toIndex, 0, moved);
+	const current = $currentIndex.get();
+	let newCurrent = current;
+	if (current === fromIndex) newCurrent = toIndex;
+	else if (fromIndex < current && toIndex >= current) newCurrent = current - 1;
+	else if (fromIndex > current && toIndex <= current) newCurrent = current + 1;
+	$queue.set(copy);
+	if (newCurrent !== current) $currentIndex.set(newCurrent);
+}
+
+export function removeFromQueue(index: number) {
+	const q = $queue.get();
+	if (index < 0 || index >= q.length) return;
+	const current = $currentIndex.get();
+	if (index === current) {
+		const copy = q.slice();
+		copy.splice(index, 1);
+		$queue.set(copy);
+		if (copy.length === 0) {
+			$currentIndex.set(-1);
+			$isPlaying.set(false);
+		} else {
+			$currentIndex.set(Math.min(index, copy.length - 1));
+			$isPlaying.set(true);
+		}
+		return;
+	}
+	const copy = q.slice();
+	copy.splice(index, 1);
+	$queue.set(copy);
+	if (index < current) $currentIndex.set(current - 1);
+}

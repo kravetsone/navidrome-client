@@ -4,6 +4,7 @@ import { Play } from "lucide-solid";
 import type { Song } from "../lib/subsonic";
 import { $currentSong, $isPlaying } from "../stores/player";
 import { HeartButton } from "./HeartButton";
+import { SongContextMenu } from "./menus";
 import styles from "./TrackList.module.css";
 
 function formatTrackDuration(seconds?: number): string {
@@ -46,10 +47,16 @@ export function TrackList(props: TrackListProps) {
 						const showArtist =
 							song.artist && song.artist !== props.omitArtist;
 						return (
-							<li
-								class={styles.track}
-								data-active={active()}
-								onDblClick={() => props.onPlay(i())}
+							<SongContextMenu
+								song={song}
+								songs={props.songs}
+								index={i()}
+								as="li"
+								triggerClass={styles.track}
+								triggerProps={{
+									"data-active": active(),
+									onDblClick: () => props.onPlay(i()),
+								}}
 							>
 								<button
 									type="button"
@@ -98,7 +105,7 @@ export function TrackList(props: TrackListProps) {
 								<span class={styles.trackDuration}>
 									{formatTrackDuration(song.duration)}
 								</span>
-							</li>
+							</SongContextMenu>
 						);
 					}}
 				</For>

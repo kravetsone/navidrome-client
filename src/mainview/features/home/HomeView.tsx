@@ -5,6 +5,7 @@ import { $activeServer } from "../../stores/servers";
 import type { Album, AlbumListType, ServerConfig } from "../../lib/subsonic";
 import { albumListQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
+import { AlbumContextMenu } from "../../components/menus";
 import { SectionRail } from "../../components/SectionRail";
 import styles from "./HomeView.module.css";
 
@@ -100,13 +101,15 @@ function AlbumRail(props: {
 function AlbumCell(props: { album: Album; server: ServerConfig }) {
 	const client = clientFor(props.server);
 	return (
-		<MediaCard
-			href={`/album/${encodeURIComponent(props.album.id)}`}
-			title={props.album.name}
-			subtitle={props.album.artist}
-			meta={props.album.year ? String(props.album.year) : undefined}
-			coverSrc={client.coverArtUrl(props.album.coverArt, 360)}
-		/>
+		<AlbumContextMenu album={props.album}>
+			<MediaCard
+				href={`/album/${encodeURIComponent(props.album.id)}`}
+				title={props.album.name}
+				subtitle={props.album.artist}
+				meta={props.album.year ? String(props.album.year) : undefined}
+				coverSrc={client.coverArtUrl(props.album.coverArt, 360)}
+			/>
+		</AlbumContextMenu>
 	);
 }
 

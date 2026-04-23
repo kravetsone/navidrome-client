@@ -4,6 +4,7 @@ import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
 import { clientFor, playlistsQuery } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
+import { PlaylistContextMenu } from "../../components/menus";
 import type { ServerConfig } from "../../lib/subsonic";
 import styles from "./PlaylistsView.module.css";
 
@@ -52,13 +53,15 @@ function PlaylistsGrid(props: { server: ServerConfig }) {
 									? `${playlist.songCount} song${playlist.songCount === 1 ? "" : "s"}`
 									: playlist.owner;
 							return (
-								<MediaCard
-									href={`/playlist/${encodeURIComponent(playlist.id)}`}
-									title={playlist.name}
-									subtitle={subtitle}
-									meta={formatDuration(playlist.duration)}
-									coverSrc={client.coverArtUrl(playlist.coverArt ?? playlist.id, 360)}
-								/>
+								<PlaylistContextMenu playlist={playlist}>
+									<MediaCard
+										href={`/playlist/${encodeURIComponent(playlist.id)}`}
+										title={playlist.name}
+										subtitle={subtitle}
+										meta={formatDuration(playlist.duration)}
+										coverSrc={client.coverArtUrl(playlist.coverArt ?? playlist.id, 360)}
+									/>
+								</PlaylistContextMenu>
 							);
 						}}
 					</For>
