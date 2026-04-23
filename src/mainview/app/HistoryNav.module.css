@@ -1,0 +1,38 @@
+.nav {
+	-webkit-app-region: no-drag;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding-left: var(--space-3);
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--text-secondary);
+	cursor: default;
+	transition:
+		background var(--duration-fast) var(--ease-standard),
+		color var(--duration-fast) var(--ease-standard),
+		opacity var(--duration-fast) var(--ease-standard);
+}
+
+.btn:not(:disabled):hover {
+	background: var(--surface-hover);
+	color: var(--text-primary);
+}
+
+.btn:not(:disabled):active {
+	background: var(--surface-active);
+}
+
+.btn:disabled {
+	opacity: 0.28;
+	pointer-events: none;
+}

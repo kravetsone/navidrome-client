@@ -1,4 +1,4 @@
-import { onMount } from "solid-js";
+import { createEffect, onMount } from "solid-js";
 import {
 	Router,
 	Route,
@@ -6,6 +6,7 @@ import {
 	useNavigate,
 	type RouteSectionProps,
 } from "@solidjs/router";
+import { rememberSearch, trackLocation } from "./stores/navigation";
 import { AppShell } from "./app/AppShell";
 import { ServerGuard } from "./app/ServerGuard";
 import { HomeView } from "./features/home/HomeView";
@@ -43,6 +44,12 @@ function Root(props: RouteSectionProps) {
 			navigate("/", { replace: true });
 		}
 		if ($activeServerId.get()) void pingActive();
+	});
+	createEffect(() => {
+		const path = location.pathname + location.search;
+		if (path.endsWith(".html")) return;
+		trackLocation(path);
+		rememberSearch(location.pathname, location.search);
 	});
 	return (
 		<AppShell>

@@ -65,7 +65,7 @@ For any new Subsonic endpoint work, invoke the `subsonic-api` skill — it cover
 
 ### UI state: nanostores, not signals
 
-Domain state lives in `src/mainview/stores/` (`player`, `servers`, `history`, `toast`, `lightbox`, `sleepTimer`, `discord-presence`, `search-palette`). Components subscribe with `@nanostores/solid`'s `useStore`. Reactive derived values are Solid signals or `computed(...)` atoms. `player.ts` is the source of truth for queue/index/position/volume/repeat/lyricsMode — the audio element is driven from `lib/player/engine.ts`.
+Domain state lives in `src/mainview/stores/` (`player`, `servers`, `history`, `toast`, `lightbox`, `sleepTimer`, `discord-presence`, `search-palette`, `navigation`). Components subscribe with `@nanostores/solid`'s `useStore`. Reactive derived values are Solid signals or `computed(...)` atoms. `player.ts` is the source of truth for queue/index/position/volume/repeat/lyricsMode — the audio element is driven from `lib/player/engine.ts`.
 
 ### Routing & shell
 

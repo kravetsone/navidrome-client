@@ -12,6 +12,7 @@ import {
 	Settings,
 } from "lucide-solid";
 import { $activeServer, $status } from "../stores/servers";
+import { $lastSearchByPath } from "../stores/navigation";
 import styles from "./Sidebar.module.css";
 
 type NavItem = { href: string; label: string; icon: typeof Home };
@@ -33,8 +34,10 @@ export function Sidebar() {
 	const location = useLocation();
 	const activeServer = useStore($activeServer);
 	const status = useStore($status);
+	const lastSearch = useStore($lastSearchByPath);
 	const isActive = (href: string) =>
 		href === "/" ? location.pathname === "/" : location.pathname.startsWith(href);
+	const hrefFor = (path: string) => path + (lastSearch()[path] ?? "");
 
 	const statusValue = () => {
 		const s = status();
@@ -45,16 +48,12 @@ export function Sidebar() {
 
 	return (
 		<nav class={styles.sidebar}>
-			<div class={styles.header}>
-				<span class={styles.brand}>Navidrome</span>
-			</div>
-
 			<div class={styles.section}>
 				<span class={styles.sectionLabel}>Library</span>
 				<For each={library}>
 					{(item) => (
 						<A
-							href={item.href}
+							href={hrefFor(item.href)}
 							class={styles.item}
 							data-active={isActive(item.href)}
 						>
@@ -70,7 +69,7 @@ export function Sidebar() {
 				<For each={personal}>
 					{(item) => (
 						<A
-							href={item.href}
+							href={hrefFor(item.href)}
 							class={styles.item}
 							data-active={isActive(item.href)}
 						>

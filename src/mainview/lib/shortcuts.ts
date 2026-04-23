@@ -17,6 +17,7 @@ import {
 	toggleShuffle,
 } from "../stores/player";
 import { $activeServer } from "../stores/servers";
+import { $canBack, $canForward } from "../stores/navigation";
 import { clientFor } from "./queries/useActiveClient";
 import { starMutation } from "./queries/mutations";
 
@@ -72,6 +73,20 @@ export function installShortcuts() {
 			if ((e.metaKey || e.ctrlKey) && e.key === ",") {
 				e.preventDefault();
 				navigate("/settings");
+				return;
+			}
+			if ((e.metaKey || e.ctrlKey) && e.key === "[") {
+				if ($canBack.get()) {
+					e.preventDefault();
+					navigate(-1);
+				}
+				return;
+			}
+			if ((e.metaKey || e.ctrlKey) && e.key === "]") {
+				if ($canForward.get()) {
+					e.preventDefault();
+					navigate(1);
+				}
 				return;
 			}
 			return;

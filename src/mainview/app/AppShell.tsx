@@ -1,6 +1,7 @@
 import { onMount, type JSX } from "solid-js";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "./PlayerBar";
+import { HistoryNav } from "./HistoryNav";
 import { CommandPalette } from "../features/search/CommandPalette";
 import { SearchPill } from "../features/search/SearchPill";
 import { NowPlayingView } from "../features/now-playing/NowPlayingView";
@@ -20,13 +21,17 @@ export function AppShell(props: { children: JSX.Element }) {
 	return (
 		<div class={styles.shell}>
 			<div class={styles.ambient} />
+			<div class={styles.titlebar}>
+				<span class={styles.titlebarBrand}>Navidrome</span>
+				<HistoryNav />
+				<div class={styles.titlebarSearch}>
+					<SearchPill />
+				</div>
+			</div>
 			<aside class={styles.sidebar}>
 				<Sidebar />
 			</aside>
 			<section class={styles.main}>
-				<div class={styles.titlebar}>
-					<SearchPill />
-				</div>
 				<div class={styles.content}>{props.children}</div>
 			</section>
 			<footer class={styles.player}>
