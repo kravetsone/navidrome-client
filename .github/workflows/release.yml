@@ -17,8 +17,9 @@ jobs:
         include:
           - os: macos-latest
             artifact: macos-arm64
-          - os: macos-13
-            artifact: macos-x64
+          # macos-x64 (Intel) build is currently disabled — it fails on
+          # macos-13 runners and isn't worth blocking releases for.
+          # Re-add `{ os: macos-13, artifact: macos-x64 }` when fixed.
           - os: ubuntu-latest
             artifact: linux-x64
           - os: windows-latest
