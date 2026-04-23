@@ -24,6 +24,30 @@
 	background-image: linear-gradient(135deg, var(--accent-glow), transparent);
 }
 
+.coverButton {
+	width: 56px;
+	height: 56px;
+	border-radius: var(--radius-md);
+	flex-shrink: 0;
+	transition:
+		transform var(--duration-fast) var(--ease-spring),
+		box-shadow var(--duration-fast) var(--ease-standard);
+	box-shadow: var(--shadow-sm);
+}
+
+.coverButton:hover {
+	transform: scale(1.04);
+}
+
+.coverButton:active {
+	transform: scale(0.98);
+}
+
+.artImg {
+	width: 56px;
+	height: 56px;
+}
+
 .trackText {
 	display: flex;
 	flex-direction: column;
@@ -90,6 +114,29 @@
 	transform: scale(0.92);
 }
 
+.btn:disabled {
+	opacity: 0.35;
+	pointer-events: none;
+}
+
+.btn[data-active="true"] {
+	color: var(--accent);
+}
+
+.iconBtn {
+	width: 24px;
+	height: 24px;
+	display: grid;
+	place-items: center;
+	color: var(--text-tertiary);
+	border-radius: var(--radius-sm);
+	transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.iconBtn:hover {
+	color: var(--text-primary);
+}
+
 .btn svg {
 	width: 18px;
 	height: 18px;
@@ -137,6 +184,13 @@
 	border-radius: var(--radius-full);
 	overflow: hidden;
 	position: relative;
+	cursor: pointer;
+}
+
+.bar::before {
+	content: "";
+	position: absolute;
+	inset: -8px 0;
 }
 
 .barFill {
@@ -144,7 +198,7 @@
 	width: 0%;
 	background: var(--text-primary);
 	border-radius: var(--radius-full);
-	transition: width var(--duration-base) var(--ease-standard);
+	transition: width 80ms linear;
 }
 
 .meta {
@@ -167,11 +221,19 @@
 	background: var(--surface-selected);
 	border-radius: var(--radius-full);
 	overflow: hidden;
+	cursor: pointer;
+	position: relative;
+}
+
+.volumeBar::before {
+	content: "";
+	position: absolute;
+	inset: -8px 0;
 }
 
 .volumeFill {
 	height: 100%;
-	width: 70%;
 	background: var(--text-secondary);
 	border-radius: var(--radius-full);
+	transition: width 60ms linear;
 }
