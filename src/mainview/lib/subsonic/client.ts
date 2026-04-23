@@ -29,7 +29,13 @@ export function normalizeServerUrl(input: string): string {
 	return url;
 }
 
-export type QueryValue = string | number | boolean | null | undefined;
+export type QueryValue =
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| Array<string | number>;
 
 function avg(xs: number[]): number {
 	if (xs.length === 0) return 0;
@@ -85,6 +91,10 @@ export class SubsonicClient {
 		const params = this.authParams({ stable: opts.stable });
 		for (const [k, v] of Object.entries(query)) {
 			if (v === null || v === undefined) continue;
+			if (Array.isArray(v)) {
+				for (const item of v) params.append(k, String(item));
+				continue;
+			}
 			params.set(k, String(v));
 		}
 		return `${base}?${params.toString()}`;
@@ -218,6 +228,48 @@ export class SubsonicClient {
 			throw new SubsonicError(70, "Playlist not found");
 		}
 		return resp.playlist;
+	}
+
+	async createPlaylist(options: {
+		name: string;
+		songIds?: string[];
+	}): Promise<Playlist> {
+		const resp = (await this.call("createPlaylist", {
+			name: options.name,
+			songId: options.songIds && options.songIds.length > 0 ? options.songIds : null,
+		})) as SubsonicResponse & {
+			playlist?: Playlist & { entry?: Song[] };
+		};
+		if (!resp.playlist) throw new SubsonicError(0, "Server did not return playlist");
+		return resp.playlist;
+	}
+
+	async updatePlaylist(options: {
+		playlistId: string;
+		name?: string;
+		comment?: string;
+		public?: boolean;
+		songIdsToAdd?: string[];
+		songIndexesToRemove?: number[];
+	}): Promise<void> {
+		await this.call("updatePlaylist", {
+			playlistId: options.playlistId,
+			name: options.name ?? null,
+			comment: options.comment ?? null,
+			public: options.public ?? null,
+			songIdToAdd:
+				options.songIdsToAdd && options.songIdsToAdd.length > 0
+					? options.songIdsToAdd
+					: null,
+			songIndexToRemove:
+				options.songIndexesToRemove && options.songIndexesToRemove.length > 0
+					? options.songIndexesToRemove
+					: null,
+		});
+	}
+
+	async deletePlaylist(id: string): Promise<void> {
+		await this.call("deletePlaylist", { id });
 	}
 
 	async star(params: {

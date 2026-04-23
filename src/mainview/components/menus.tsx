@@ -1,6 +1,10 @@
 import { useStore } from "@nanostores/solid";
 import { useNavigate } from "@solidjs/router";
-import { useQueryClient, createMutation } from "@tanstack/solid-query";
+import {
+	useQueryClient,
+	createMutation,
+	createQuery,
+} from "@tanstack/solid-query";
 import {
 	Disc3,
 	Download,
@@ -9,7 +13,9 @@ import {
 	Link as LinkIcon,
 	ListMusic,
 	ListPlus,
+	Pencil,
 	Play,
+	Trash2,
 	User,
 } from "lucide-solid";
 import { $activeServer } from "../stores/servers";
@@ -20,7 +26,12 @@ import {
 	playSong,
 } from "../stores/player";
 import { clientFor } from "../lib/queries/useActiveClient";
-import { starMutation } from "../lib/queries/mutations";
+import {
+	deletePlaylistMutation,
+	playlistsQuery,
+	starMutation,
+	updatePlaylistMutation,
+} from "../lib/queries";
 import type { Album, Artist, Playlist, Song } from "../lib/subsonic";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
 import type { JSX, ValidComponent } from "solid-js";
@@ -52,6 +63,10 @@ interface SongMenuProps extends BaseProps {
 	song: Song;
 	songs?: Song[];
 	index?: number;
+	/** When set, adds a "Remove from playlist" action that removes this index. */
+	playlistId?: string;
+	/** Index of the song within the playlist (for removal). Defaults to `index`. */
+	playlistIndex?: number;
 }
 
 export function SongContextMenu(props: SongMenuProps) {
@@ -67,6 +82,25 @@ export function SongContextMenu(props: SongMenuProps) {
 			serverId: server.id,
 			queryClient,
 		});
+	});
+
+	const updatePl = createMutation(() => {
+		const server = activeServer();
+		if (!server) return { mutationFn: async () => {} };
+		return updatePlaylistMutation({
+			client: clientFor(server),
+			serverId: server.id,
+			queryClient,
+		});
+	});
+
+	const playlists = createQuery(() => {
+		const server = activeServer();
+		const opts = playlistsQuery({
+			client: server ? clientFor(server) : (null as never),
+			serverId: server?.id ?? "__none__",
+		});
+		return { ...opts, enabled: Boolean(server) };
 	});
 
 	const items = (): MenuItem[] => {
@@ -119,8 +153,30 @@ export function SongContextMenu(props: SongMenuProps) {
 						id: song.id,
 						starred: !song.starred,
 					}),
+			},
+			{
+				label: "Add to playlist",
+				icon: <ListPlus size={14} />,
+				submenu: addToPlaylistSubmenu(),
 				separatorAfter: true,
 			},
+			...(props.playlistId !== undefined
+				? [
+						{
+							label: "Remove from playlist",
+							icon: <Trash2 size={14} />,
+							destructive: true,
+							onSelect: () =>
+								updatePl.mutate({
+									playlistId: props.playlistId!,
+									songIndexesToRemove: [
+										props.playlistIndex ?? props.index ?? 0,
+									],
+								}),
+							separatorAfter: true,
+						},
+					]
+				: []),
 			{
 				label: "Copy link",
 				icon: <LinkIcon size={14} />,
@@ -135,6 +191,27 @@ export function SongContextMenu(props: SongMenuProps) {
 				onSelect: () => client && openExternal(client.downloadUrl(song.id)),
 			},
 		];
+	};
+
+	const addToPlaylistSubmenu = (): MenuItem[] => {
+		const list = playlists.data ?? [];
+		if (list.length === 0) {
+			return [
+				{
+					label: "No playlists yet",
+					disabled: true,
+				},
+			];
+		}
+		return list.map((pl) => ({
+			label: pl.name,
+			icon: <ListMusic size={14} />,
+			onSelect: () =>
+				updatePl.mutate({
+					playlistId: pl.id,
+					songIdsToAdd: [props.song.id],
+				}),
+		}));
 	};
 
 	return (
@@ -308,7 +385,28 @@ interface PlaylistMenuProps extends BaseProps {
 
 export function PlaylistContextMenu(props: PlaylistMenuProps) {
 	const activeServer = useStore($activeServer);
+	const queryClient = useQueryClient();
 	const navigate = useNavigate();
+
+	const updatePl = createMutation(() => {
+		const server = activeServer();
+		if (!server) return { mutationFn: async () => {} };
+		return updatePlaylistMutation({
+			client: clientFor(server),
+			serverId: server.id,
+			queryClient,
+		});
+	});
+
+	const deletePl = createMutation(() => {
+		const server = activeServer();
+		if (!server) return { mutationFn: async () => {} };
+		return deletePlaylistMutation({
+			client: clientFor(server),
+			serverId: server.id,
+			queryClient,
+		});
+	});
 
 	const items = (): MenuItem[] => {
 		const server = activeServer();
@@ -322,6 +420,16 @@ export function PlaylistContextMenu(props: PlaylistMenuProps) {
 			if (mode === "play") playQueue(songs, 0);
 			else if (mode === "queue") addToQueue(songs);
 			else playNextInQueue(songs);
+		};
+		const handleRename = () => {
+			const next = window.prompt("Rename playlist", pl.name);
+			if (!next || next.trim() === pl.name) return;
+			updatePl.mutate({ playlistId: pl.id, name: next.trim() });
+		};
+		const handleDelete = () => {
+			const ok = window.confirm(`Delete playlist "${pl.name}"?`);
+			if (!ok) return;
+			deletePl.mutate({ id: pl.id });
 		};
 		return [
 			{
@@ -344,6 +452,17 @@ export function PlaylistContextMenu(props: PlaylistMenuProps) {
 				label: "Open playlist",
 				icon: <ListMusic size={14} />,
 				onSelect: () => navigate(`/playlist/${encodeURIComponent(pl.id)}`),
+			},
+			{
+				label: "Rename",
+				icon: <Pencil size={14} />,
+				onSelect: handleRename,
+			},
+			{
+				label: "Delete",
+				icon: <Trash2 size={14} />,
+				destructive: true,
+				onSelect: handleDelete,
 				separatorAfter: true,
 			},
 			{

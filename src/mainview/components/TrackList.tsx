@@ -22,6 +22,8 @@ export interface TrackListProps {
 	omitArtist?: string;
 	/** When true, always show the album column. */
 	showAlbum?: boolean;
+	/** When set, enables "Remove from playlist" in each row's context menu. */
+	playlistId?: string;
 }
 
 export function TrackList(props: TrackListProps) {
@@ -51,6 +53,8 @@ export function TrackList(props: TrackListProps) {
 								song={song}
 								songs={props.songs}
 								index={i()}
+								playlistId={props.playlistId}
+								playlistIndex={i()}
 								as="li"
 								triggerClass={styles.track}
 								triggerProps={{

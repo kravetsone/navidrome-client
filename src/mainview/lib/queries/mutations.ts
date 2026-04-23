@@ -191,6 +191,83 @@ function applyRatingToCaches(
 	return snapshot;
 }
 
+interface CreatePlaylistVars {
+	name: string;
+	songIds?: string[];
+}
+
+export function createPlaylistMutation(ctx: MutationCtx) {
+	return {
+		mutationFn: (vars: CreatePlaylistVars) =>
+			ctx.client.createPlaylist({ name: vars.name, songIds: vars.songIds }),
+		onSuccess: () => {
+			ctx.queryClient.invalidateQueries({
+				queryKey: qk.playlists(ctx.serverId),
+			});
+		},
+	};
+}
+
+interface UpdatePlaylistVars {
+	playlistId: string;
+	name?: string;
+	comment?: string;
+	public?: boolean;
+	songIdsToAdd?: string[];
+	songIndexesToRemove?: number[];
+}
+
+export function updatePlaylistMutation(ctx: MutationCtx) {
+	return {
+		mutationFn: (vars: UpdatePlaylistVars) =>
+			ctx.client.updatePlaylist(vars),
+		onSuccess: (_data: void, vars: UpdatePlaylistVars) => {
+			ctx.queryClient.invalidateQueries({
+				queryKey: qk.playlist(ctx.serverId, vars.playlistId),
+			});
+			ctx.queryClient.invalidateQueries({
+				queryKey: qk.playlists(ctx.serverId),
+			});
+		},
+	};
+}
+
+interface DeletePlaylistVars {
+	id: string;
+}
+
+export function deletePlaylistMutation(ctx: MutationCtx) {
+	return {
+		mutationFn: (vars: DeletePlaylistVars) => ctx.client.deletePlaylist(vars.id),
+		onMutate: async (vars: DeletePlaylistVars) => {
+			const key = qk.playlists(ctx.serverId);
+			await ctx.queryClient.cancelQueries({ queryKey: key });
+			const prev = ctx.queryClient.getQueryData<Playlist[]>(key);
+			if (prev) {
+				ctx.queryClient.setQueryData(
+					key,
+					prev.filter((p) => p.id !== vars.id),
+				);
+			}
+			return { prev };
+		},
+		onError: (
+			_err: unknown,
+			_vars: DeletePlaylistVars,
+			context: { prev?: Playlist[] } | undefined,
+		) => {
+			if (context?.prev) {
+				ctx.queryClient.setQueryData(qk.playlists(ctx.serverId), context.prev);
+			}
+		},
+		onSuccess: () => {
+			ctx.queryClient.invalidateQueries({
+				queryKey: qk.playlists(ctx.serverId),
+			});
+		},
+	};
+}
+
 export function ratingMutation(ctx: MutationCtx) {
 	return {
 		mutationFn: async (vars: RatingVars) => {

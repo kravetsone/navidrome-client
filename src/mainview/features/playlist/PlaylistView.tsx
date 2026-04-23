@@ -146,6 +146,7 @@ function PlaylistBody(props: { server: ServerConfig; id: string }) {
 							<TrackList
 								songs={songs()}
 								showAlbum
+								playlistId={pl().id}
 								onPlay={(i) => playQueue(songs(), i)}
 							/>
 						</Show>
