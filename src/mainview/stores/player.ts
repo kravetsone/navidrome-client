@@ -173,6 +173,22 @@ export function playNextInQueue(songs: Song | Song[]) {
 	$queue.set([...q.slice(0, insertAt), ...list, ...q.slice(insertAt)]);
 }
 
+export function insertIntoQueue(songs: Song | Song[], atIndex: number) {
+	const list = Array.isArray(songs) ? songs : [songs];
+	if (list.length === 0) return;
+	const q = $queue.get();
+	if (q.length === 0) {
+		playQueue(list, 0);
+		return;
+	}
+	const insertAt = Math.max(0, Math.min(atIndex, q.length));
+	$queue.set([...q.slice(0, insertAt), ...list, ...q.slice(insertAt)]);
+	const current = $currentIndex.get();
+	if (current >= 0 && insertAt <= current) {
+		$currentIndex.set(current + list.length);
+	}
+}
+
 export function jumpTo(index: number) {
 	const q = $queue.get();
 	if (index < 0 || index >= q.length) return;

@@ -24,6 +24,7 @@ import {
 	$queueOpen,
 	addToQueue,
 	closeQueue,
+	insertIntoQueue,
 	jumpTo,
 	playNextInQueue,
 	removeFromQueue,
@@ -78,6 +79,10 @@ export function QueuePanel() {
 	const activeServer = useStore($activeServer);
 	const [historyOpen, setHistoryOpen] = createSignal(false);
 	const [dropActive, setDropActive] = createSignal(false);
+	const [rowDropTarget, setRowDropTarget] = createSignal<{
+		rowId: string;
+		above: boolean;
+	} | null>(null);
 	let dragDepth = 0;
 
 	const currentSong = createMemo<Song | null>(() => {
@@ -145,7 +150,10 @@ export function QueuePanel() {
 	const handleNativeDragLeave = (e: DragEvent) => {
 		if (!e.dataTransfer?.types.includes(SONG_DRAG_MIME)) return;
 		dragDepth = Math.max(0, dragDepth - 1);
-		if (dragDepth === 0) setDropActive(false);
+		if (dragDepth === 0) {
+			setDropActive(false);
+			setRowDropTarget(null);
+		}
 	};
 
 	const handleNativeDrop = (mode: "append" | "next") => (e: DragEvent) => {
@@ -155,8 +163,35 @@ export function QueuePanel() {
 		e.stopPropagation();
 		dragDepth = 0;
 		setDropActive(false);
+		setRowDropTarget(null);
 		if (mode === "next") playNextInQueue(song);
 		else addToQueue(song);
+	};
+
+	const handleRowDragOver = (rowId: string) => (e: DragEvent) => {
+		if (!e.dataTransfer?.types.includes(SONG_DRAG_MIME)) return;
+		e.preventDefault();
+		e.stopPropagation();
+		e.dataTransfer.dropEffect = "copy";
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const above = e.clientY < rect.top + rect.height / 2;
+		const current = rowDropTarget();
+		if (!current || current.rowId !== rowId || current.above !== above) {
+			setRowDropTarget({ rowId, above });
+		}
+	};
+
+	const handleRowDrop = (queueIndex: number) => (e: DragEvent) => {
+		const song = readDroppedSong(e);
+		if (!song) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const target = rowDropTarget();
+		const insertAt = target?.above ? queueIndex : queueIndex + 1;
+		dragDepth = 0;
+		setDropActive(false);
+		setRowDropTarget(null);
+		insertIntoQueue(song, insertAt);
 	};
 
 	return (
@@ -224,12 +259,25 @@ export function QueuePanel() {
 									<SortableProvider ids={upNextRows().map((r) => r.id)}>
 										<ol class={styles.list}>
 											<For each={upNextRows()}>
-												{(row) => (
-													<SortableRow
-														row={row}
-														cover={coverFor(row.song)}
-													/>
-												)}
+												{(row) => {
+													const target = () => rowDropTarget();
+													return (
+														<SortableRow
+															row={row}
+															cover={coverFor(row.song)}
+															dropAbove={
+																target()?.rowId === row.id &&
+																target()?.above === true
+															}
+															dropBelow={
+																target()?.rowId === row.id &&
+																target()?.above === false
+															}
+															onNativeDragOver={handleRowDragOver(row.id)}
+															onNativeDrop={handleRowDrop(row.queueIndex)}
+														/>
+													);
+												}}
 											</For>
 										</ol>
 									</SortableProvider>
@@ -311,13 +359,22 @@ function NowPlayingRow(props: { song: Song; cover?: string }) {
 	);
 }
 
-function SortableRow(props: { row: RowEntry; cover?: string }) {
+function SortableRow(props: {
+	row: RowEntry;
+	cover?: string;
+	dropAbove?: boolean;
+	dropBelow?: boolean;
+	onNativeDragOver?: (e: DragEvent) => void;
+	onNativeDrop?: (e: DragEvent) => void;
+}) {
 	const sortable = createSortable(props.row.id);
 	return (
 		<li
 			ref={sortable.ref}
 			class={styles.row}
 			data-dragging={sortable.isActiveDraggable}
+			data-drop-above={props.dropAbove ? "true" : undefined}
+			data-drop-below={props.dropBelow ? "true" : undefined}
 			style={{
 				transform: sortable.transform
 					? `translate3d(${sortable.transform.x}px, ${sortable.transform.y}px, 0)`
@@ -325,6 +382,8 @@ function SortableRow(props: { row: RowEntry; cover?: string }) {
 				transition: sortable.transform ? "transform 200ms ease" : undefined,
 			}}
 			onDblClick={() => jumpTo(props.row.queueIndex)}
+			onDragOver={props.onNativeDragOver}
+			onDrop={props.onNativeDrop}
 		>
 			<button
 				type="button"

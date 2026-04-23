@@ -129,6 +129,7 @@
 }
 
 .row {
+	position: relative;
 	display: grid;
 	grid-template-columns: 20px 40px 1fr auto 28px;
 	align-items: center;
@@ -138,6 +139,27 @@
 	cursor: pointer;
 	transition: background var(--duration-fast) var(--ease-standard);
 	touch-action: none;
+}
+
+.row[data-drop-above="true"]::before,
+.row[data-drop-below="true"]::after {
+	content: "";
+	position: absolute;
+	left: var(--space-2);
+	right: var(--space-2);
+	height: 2px;
+	background: var(--accent);
+	border-radius: 1px;
+	box-shadow: 0 0 8px var(--accent-glow);
+	pointer-events: none;
+}
+
+.row[data-drop-above="true"]::before {
+	top: -1px;
+}
+
+.row[data-drop-below="true"]::after {
+	bottom: -1px;
 }
 
 .row:hover {
