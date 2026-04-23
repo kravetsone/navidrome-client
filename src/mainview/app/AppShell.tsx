@@ -10,12 +10,15 @@ import { LightboxView } from "../features/lightbox/LightboxView";
 import { ToastViewport } from "../components/Toast";
 import { audioEngine } from "../lib/player/engine";
 import { installShortcuts } from "../lib/shortcuts";
+import { registerScrollContainer } from "../stores/navigation";
 import styles from "./AppShell.module.css";
 
 export function AppShell(props: { children: JSX.Element }) {
 	let audioRef: HTMLAudioElement | undefined;
+	let contentRef: HTMLDivElement | undefined;
 	onMount(() => {
 		if (audioRef) audioEngine.attach(audioRef);
+		if (contentRef) registerScrollContainer(contentRef);
 	});
 	installShortcuts();
 	return (
@@ -32,7 +35,7 @@ export function AppShell(props: { children: JSX.Element }) {
 				<Sidebar />
 			</aside>
 			<section class={styles.main}>
-				<div class={styles.content}>{props.children}</div>
+				<div class={styles.content} ref={contentRef}>{props.children}</div>
 			</section>
 			<footer class={styles.player}>
 				<PlayerBar />
