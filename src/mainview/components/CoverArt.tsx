@@ -1,4 +1,10 @@
-import { createMemo, createSignal, onMount, Show } from "solid-js";
+import {
+	Show,
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+} from "solid-js";
 import { gradientFor, initialsFor } from "../lib/color";
 import styles from "./CoverArt.module.css";
 
@@ -11,70 +17,127 @@ interface CoverArtProps {
 	class?: string;
 }
 
-// Tracks URLs that finished loading at least once in this session. Lets us
-// skip the fade-in on remount so re-entering a page doesn't flash skeletons
-// for images the browser already has in cache.
-const loadedSources = new Set<string>();
+// Exact URLs we've painted at least once this session. Re-mounting with
+// one of these skips the skeleton and the fade-in.
+const loadedUrls = new Set<string>();
+// URLs keyed by identity ignoring the `size` query param. Lets a cached
+// low-res variant stand in as an instant poster while a higher-res variant
+// preloads on top (e.g. 240px grid avatar → 360px detail hero).
+const loadedByLogicalKey = new Map<string, string>();
+
+function logicalKey(url: string): string {
+	try {
+		const u = new URL(url, "http://x");
+		u.searchParams.delete("size");
+		return u.toString();
+	} catch {
+		return url;
+	}
+}
+
+function recordLoaded(url: string) {
+	loadedUrls.add(url);
+	loadedByLogicalKey.set(logicalKey(url), url);
+}
+
+function posterFor(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	if (loadedUrls.has(url)) return url;
+	return loadedByLogicalKey.get(logicalKey(url));
+}
 
 export function CoverArt(props: CoverArtProps) {
-	const sources = createMemo(() =>
+	const candidates = createMemo(() =>
 		[props.src, props.fallbackSrc].filter((s): s is string => Boolean(s)),
 	);
-	const currentSrc = () => sources()[tier()];
-	const [tier, setTier] = createSignal(0);
-	const [loaded, setLoaded] = createSignal(
-		(() => {
-			const s = sources()[0];
-			return s ? loadedSources.has(s) : false;
-		})(),
+
+	const [failed, setFailed] = createSignal<Set<string>>(new Set());
+	const target = createMemo(() => {
+		const bad = failed();
+		return candidates().find((c) => !bad.has(c));
+	});
+
+	// The URL actually being painted. Starts as a size-agnostic poster when
+	// available so nav into a detail page reuses the grid's avatar instantly.
+	const [displayed, setDisplayed] = createSignal<string | undefined>(
+		posterFor(candidates()[0]),
+	);
+	// Whether the first painted URL came from cache. Drives a one-shot fade
+	// for fresh network loads, suppressed for cache hits.
+	const [instant, setInstant] = createSignal<boolean>(
+		Boolean(posterFor(candidates()[0])),
 	);
 
-	const fontSize = () => Math.max(14, (props.size ?? 180) * 0.28);
-
-	let imgEl: HTMLImageElement | undefined;
-	onMount(() => {
-		if (!imgEl || loaded()) return;
-		if (imgEl.complete && imgEl.naturalWidth > 0) {
-			const src = imgEl.currentSrc || imgEl.src;
-			if (src) loadedSources.add(src);
-			setLoaded(true);
-		}
+	createEffect(() => {
+		const t = target();
+		if (!t || displayed()) return;
+		const poster = posterFor(t);
+		if (poster) setDisplayed(poster);
 	});
+
+	// Preload target in an offscreen Image(); swap `displayed` on success,
+	// mark the URL failed on error so the next candidate gets a turn.
+	createEffect(() => {
+		const t = target();
+		if (!t || t === displayed()) return;
+		const img = new Image();
+		let cancelled = false;
+		img.decoding = "async";
+		img.onload = () => {
+			if (cancelled) return;
+			const first = !displayed();
+			recordLoaded(t);
+			if (first) setInstant(false);
+			setDisplayed(t);
+		};
+		img.onerror = () => {
+			if (cancelled) return;
+			setFailed((prev) => {
+				if (prev.has(t)) return prev;
+				const next = new Set(prev);
+				next.add(t);
+				return next;
+			});
+		};
+		img.src = t;
+		onCleanup(() => {
+			cancelled = true;
+		});
+	});
+
+	const fontSize = () => Math.max(14, (props.size ?? 180) * 0.28);
+	const showSkeleton = () => !displayed() && Boolean(target());
 
 	return (
 		<div
 			class={`${styles.cover} ${props.round ? styles.round : ""} ${props.class ?? ""}`}
 			style={{
 				background: gradientFor(props.name),
-				...(props.size ? { width: `${props.size}px`, height: `${props.size}px` } : {}),
+				...(props.size
+					? { width: `${props.size}px`, height: `${props.size}px` }
+					: {}),
 			}}
 		>
-			<Show when={!loaded() && currentSrc()}>
+			<Show when={showSkeleton()}>
 				<div class={styles.skeleton} />
 			</Show>
-			<Show when={currentSrc()} keyed>
-				{(src) => (
-					<img
-						ref={imgEl}
-						class={styles.image}
-						src={src}
-						alt={props.name}
-						data-loaded={loaded()}
-						loading="lazy"
-						draggable={false}
-						onLoad={() => {
-							loadedSources.add(src);
-							setLoaded(true);
-						}}
-						onError={() => {
-							setLoaded(false);
-							setTier((t) => t + 1);
-						}}
-					/>
-				)}
+
+			<Show when={displayed()}>
+				<img
+					class={styles.image}
+					src={displayed()!}
+					alt={props.name}
+					decoding="async"
+					draggable={false}
+					data-instant={instant() ? "true" : "false"}
+				/>
 			</Show>
-			<Show when={!currentSrc()}>
-				<span class={styles.fallback} style={{ "font-size": `${fontSize()}px` }}>
+
+			<Show when={!target() && !displayed()}>
+				<span
+					class={styles.fallback}
+					style={{ "font-size": `${fontSize()}px` }}
+				>
 					{initialsFor(props.name)}
 				</span>
 			</Show>

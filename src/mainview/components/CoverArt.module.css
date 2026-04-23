@@ -18,12 +18,11 @@
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	opacity: 0;
-	transition: opacity var(--duration-base) var(--ease-standard);
+	animation: cover-fade 180ms var(--ease-standard) both;
 }
 
-.image[data-loaded="true"] {
-	opacity: 1;
+.image[data-instant="true"] {
+	animation: none;
 }
 
 .fallback {
@@ -50,6 +49,11 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.6s var(--ease-standard) infinite;
+}
+
+@keyframes cover-fade {
+	from { opacity: 0; }
+	to { opacity: 1; }
 }
 
 @keyframes shimmer {
