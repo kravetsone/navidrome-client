@@ -306,12 +306,45 @@ export class SubsonicClient {
 
 		const url = this.buildUrl("stream", { id: songId, maxBitRate: 320 });
 		const controller = new AbortController();
-		const onAbort = () => controller.abort();
-		options.signal?.addEventListener("abort", onAbort, { once: true });
-		const timeout = setTimeout(() => controller.abort(), timeoutMs);
+		let userCancelled = false;
+		let timedOut = false;
+		const onUserAbort = () => {
+			userCancelled = true;
+			controller.abort();
+		};
+		options.signal?.addEventListener("abort", onUserAbort, { once: true });
+		const timeout = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, timeoutMs);
+
+		const finalize = (
+			phase: "done" | "cancelled" | "error",
+			stats: {
+				bytes: number;
+				start: number;
+				peakMbps: number;
+				error?: string;
+			},
+		): SpeedTestResult => {
+			const elapsed = performance.now() - stats.start;
+			snapshot.bytes = stats.bytes;
+			snapshot.durationMs = elapsed;
+			if (stats.peakMbps > 0) snapshot.peakMbps = stats.peakMbps;
+			if (elapsed > 0 && stats.bytes > 0) {
+				snapshot.throughputMbps = (stats.bytes * 8) / (elapsed / 1000) / 1_000_000;
+			}
+			snapshot.phase = phase;
+			if (phase === "error" && stats.error) snapshot.error = stats.error;
+			emit();
+			return { ...snapshot };
+		};
+
+		const start = performance.now();
+		let total = 0;
+		let peakMbps = 0;
 
 		try {
-			const start = performance.now();
 			const res = await fetch(url, {
 				signal: controller.signal,
 				credentials: "omit",
@@ -321,27 +354,15 @@ export class SubsonicClient {
 			emit();
 
 			if (!res.ok || !res.body) {
-				snapshot.phase = "done";
-				emit();
-				return { ...snapshot };
+				return finalize("done", { bytes: 0, start, peakMbps: 0 });
 			}
 
 			const reader = res.body.getReader();
-			let total = 0;
-			let peakMbps = 0;
 			let lastEmitAt = 0;
 			let windowBytes = 0;
 			let windowStart = start;
 
 			while (total < targetBytes) {
-				if (options.signal?.aborted) {
-					try {
-						await reader.cancel();
-					} catch {}
-					snapshot.phase = "cancelled";
-					emit();
-					return { ...snapshot };
-				}
 				const { done, value } = await reader.read();
 				if (done) break;
 				const chunk = value?.byteLength ?? 0;
@@ -374,27 +395,32 @@ export class SubsonicClient {
 				await reader.cancel();
 			} catch {}
 
-			const elapsed = performance.now() - start;
-			snapshot.bytes = total;
-			snapshot.durationMs = elapsed;
-			snapshot.peakMbps = peakMbps || snapshot.peakMbps;
-			if (elapsed > 0 && total > 0) {
-				snapshot.throughputMbps = (total * 8) / (elapsed / 1000) / 1_000_000;
-			}
-			snapshot.phase = "done";
-			emit();
-			return { ...snapshot };
+			return finalize("done", { bytes: total, start, peakMbps });
 		} catch (e) {
-			const aborted =
-				(e instanceof DOMException && e.name === "AbortError") ||
-				controller.signal.aborted;
-			snapshot.phase = aborted ? "cancelled" : "error";
-			if (!aborted) snapshot.error = e instanceof Error ? e.message : String(e);
-			emit();
-			return { ...snapshot };
+			if (userCancelled) {
+				return finalize("cancelled", { bytes: total, start, peakMbps });
+			}
+			// Soft timeout: if we managed to read a usable sample, treat as done.
+			if (timedOut && total >= 256 * 1024) {
+				return finalize("done", { bytes: total, start, peakMbps });
+			}
+			if (timedOut) {
+				return finalize("error", {
+					bytes: total,
+					start,
+					peakMbps,
+					error: "Timed out before enough data could be sampled",
+				});
+			}
+			return finalize("error", {
+				bytes: total,
+				start,
+				peakMbps,
+				error: e instanceof Error ? e.message : String(e),
+			});
 		} finally {
 			clearTimeout(timeout);
-			options.signal?.removeEventListener("abort", onAbort);
+			options.signal?.removeEventListener("abort", onUserAbort);
 		}
 	}
 
