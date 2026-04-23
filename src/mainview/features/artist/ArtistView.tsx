@@ -9,6 +9,7 @@ import { CoverArt } from "../../components/CoverArt";
 import { HeartButton } from "../../components/HeartButton";
 import { MediaCard } from "../../components/MediaCard";
 import { AlbumContextMenu } from "../../components/menus";
+import { openLightbox } from "../../stores/lightbox";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
@@ -42,6 +43,12 @@ function ArtistBody(props: { server: ServerConfig; id: string }) {
 		);
 	});
 
+	const fullHeroSrc = createMemo(() => {
+		const a = query.data;
+		if (!a) return undefined;
+		return a.artistImageUrl || client.coverArtUrl(a.coverArt || a.id);
+	});
+
 	const paletteUrl = createMemo(() => {
 		const a = query.data;
 		if (!a) return undefined;
@@ -72,12 +79,19 @@ function ArtistBody(props: { server: ServerConfig; id: string }) {
 					return (
 						<article class={styles.page}>
 							<section class={styles.hero}>
-								<CoverArt
-									src={heroSrc()}
-									name={artist().name}
-									class={styles.avatar}
-									round
-								/>
+								<button
+									type="button"
+									class={styles.avatarZoom}
+									onClick={() => openLightbox(fullHeroSrc(), artist().name)}
+									aria-label={`View artwork for ${artist().name}`}
+								>
+									<CoverArt
+										src={heroSrc()}
+										name={artist().name}
+										class={styles.avatar}
+										round
+									/>
+								</button>
 								<div class={styles.heroText}>
 									<span class={styles.eyebrow}>Artist</span>
 									<h1 class={styles.title}>{artist().name}</h1>

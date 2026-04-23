@@ -30,6 +30,7 @@ import {
 import { $activeServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
 import { CoverArt } from "../../components/CoverArt";
+import { openLightbox } from "../../stores/lightbox";
 import styles from "./NowPlayingView.module.css";
 
 function formatTime(seconds: number): string {
@@ -55,6 +56,13 @@ export function NowPlayingView() {
 		const server = activeServer();
 		if (!s || !server) return undefined;
 		return clientFor(server).coverArtUrl(s.coverArt, 720);
+	});
+
+	const fullCoverSrc = createMemo(() => {
+		const s = song();
+		const server = activeServer();
+		if (!s || !server) return undefined;
+		return clientFor(server).coverArtUrl(s.coverArt);
 	});
 
 	const totalSeconds = createMemo(() => {
@@ -126,13 +134,21 @@ export function NowPlayingView() {
 					</button>
 
 					<div class={styles.stage}>
-						<div class={styles.coverWrap}>
+						<button
+							type="button"
+							class={styles.coverWrap}
+							onClick={(e) => {
+								e.stopPropagation();
+								openLightbox(fullCoverSrc(), song()!.title);
+							}}
+							aria-label={`View artwork for ${song()!.title}`}
+						>
 							<CoverArt
 								src={coverSrc()}
 								name={song()!.title}
 								class={styles.cover}
 							/>
-						</div>
+						</button>
 
 						<div class={styles.info}>
 							<h1 class={styles.title}>{song()!.title}</h1>

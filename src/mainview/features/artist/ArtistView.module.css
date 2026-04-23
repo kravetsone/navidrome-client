@@ -21,6 +21,23 @@
 	align-items: end;
 }
 
+.avatarZoom {
+	display: block;
+	width: 240px;
+	height: 240px;
+	border-radius: 50%;
+	cursor: zoom-in;
+	transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.avatarZoom:hover {
+	transform: scale(1.02);
+}
+
+.avatarZoom:active {
+	transform: scale(0.99);
+}
+
 .avatar {
 	width: 240px;
 	height: 240px;

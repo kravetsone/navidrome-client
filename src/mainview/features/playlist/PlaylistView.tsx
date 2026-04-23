@@ -9,6 +9,7 @@ import type { ServerConfig, Song } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
 import { TrackList } from "../../components/TrackList";
 import { playQueue, toggleShuffle, $shuffle } from "../../stores/player";
+import { openLightbox } from "../../stores/lightbox";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
@@ -46,6 +47,12 @@ function PlaylistBody(props: { server: ServerConfig; id: string }) {
 		const pl = query.data;
 		if (!pl) return undefined;
 		return client.coverArtUrl(pl.coverArt ?? pl.id, 480);
+	});
+
+	const fullCoverUrl = createMemo(() => {
+		const pl = query.data;
+		if (!pl) return undefined;
+		return client.coverArtUrl(pl.coverArt ?? pl.id);
 	});
 
 	const paletteUrl = createMemo(() => {
@@ -92,11 +99,18 @@ function PlaylistBody(props: { server: ServerConfig; id: string }) {
 				{(pl) => (
 					<article class={styles.page}>
 						<section class={styles.hero}>
-							<CoverArt
-								src={coverUrl()}
-								name={pl().name}
-								class={styles.cover}
-							/>
+							<button
+								type="button"
+								class={styles.coverZoom}
+								onClick={() => openLightbox(fullCoverUrl(), pl().name)}
+								aria-label={`View artwork for ${pl().name}`}
+							>
+								<CoverArt
+									src={coverUrl()}
+									name={pl().name}
+									class={styles.cover}
+								/>
+							</button>
 							<div class={styles.heroText}>
 								<span class={styles.eyebrow}>Playlist</span>
 								<h1 class={styles.title}>{pl().name}</h1>

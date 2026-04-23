@@ -1,11 +1,12 @@
-import { For, Show } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
-import { artistsQuery, clientFor } from "../../lib/queries";
+import { artistQuery, artistsQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import { ArtistContextMenu } from "../../components/menus";
-import type { ServerConfig } from "../../lib/subsonic";
+import type { Artist, ServerConfig } from "../../lib/subsonic";
+import type { SubsonicClient } from "../../lib/subsonic/client";
 import styles from "./ArtistsView.module.css";
 
 export function ArtistsView() {
@@ -57,22 +58,11 @@ function ArtistsBody(props: { server: ServerConfig }) {
 									<div class={styles.grid}>
 										<For each={section.artist}>
 											{(artist) => (
-												<ArtistContextMenu artist={artist}>
-													<MediaCard
-														href={`/artist/${encodeURIComponent(artist.id)}`}
-														title={artist.name}
-														subtitle={
-															artist.albumCount != null
-																? `${artist.albumCount} album${artist.albumCount === 1 ? "" : "s"}`
-																: undefined
-														}
-														coverSrc={
-															artist.artistImageUrl ||
-															client.coverArtUrl(artist.coverArt || artist.id, 240)
-														}
-														round
-													/>
-												</ArtistContextMenu>
+												<ArtistCard
+													server={props.server}
+													client={client}
+													artist={artist}
+												/>
 											)}
 										</For>
 									</div>
@@ -97,5 +87,64 @@ function ArtistsBody(props: { server: ServerConfig }) {
 				</div>
 			</Show>
 		</Show>
+	);
+}
+
+function ArtistCard(props: {
+	server: ServerConfig;
+	client: SubsonicClient;
+	artist: Artist;
+}) {
+	const [visible, setVisible] = createSignal(false);
+	let cardRef: HTMLDivElement | undefined;
+
+	onMount(() => {
+		if (!cardRef) return;
+		const io = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((e) => e.isIntersecting)) {
+					setVisible(true);
+					io.disconnect();
+				}
+			},
+			{ rootMargin: "200px" },
+		);
+		io.observe(cardRef);
+		onCleanup(() => io.disconnect());
+	});
+
+	const detail = createQuery(() => ({
+		...artistQuery(
+			{ client: props.client, serverId: props.server.id },
+			props.artist.id,
+		),
+		enabled: visible(),
+	}));
+
+	const coverSrc = createMemo(() => {
+		const full = detail.data;
+		const imgUrl = full?.artistImageUrl || props.artist.artistImageUrl;
+		if (imgUrl) return imgUrl;
+		const coverId =
+			full?.coverArt || props.artist.coverArt || props.artist.id;
+		return props.client.coverArtUrl(coverId, 240);
+	});
+
+	return (
+		<div ref={cardRef}>
+			<ArtistContextMenu artist={props.artist}>
+				<MediaCard
+					href={`/artist/${encodeURIComponent(props.artist.id)}`}
+					title={props.artist.name}
+					subtitle={
+						props.artist.albumCount != null
+							? `${props.artist.albumCount} album${props.artist.albumCount === 1 ? "" : "s"}`
+							: undefined
+					}
+					coverSrc={coverSrc()}
+					round
+				/>
+			</ArtistContextMenu>
+		</div>
 	);
 }

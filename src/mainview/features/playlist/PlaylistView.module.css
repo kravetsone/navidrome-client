@@ -21,6 +21,23 @@
 	align-items: end;
 }
 
+.coverZoom {
+	display: block;
+	width: 320px;
+	height: 320px;
+	border-radius: var(--radius-lg);
+	cursor: zoom-in;
+	transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.coverZoom:hover {
+	transform: scale(1.02);
+}
+
+.coverZoom:active {
+	transform: scale(0.99);
+}
+
 .cover {
 	width: 320px;
 	height: 320px;

@@ -11,6 +11,10 @@ html, body, #app {
 	height: 100%;
 	width: 100%;
 	overflow: hidden;
+	-webkit-user-select: none;
+	user-select: none;
+	cursor: default;
+	-webkit-touch-callout: none;
 }
 
 body {
@@ -23,8 +27,6 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
 	font-feature-settings: "ss01", "cv11";
-	user-select: none;
-	cursor: default;
 }
 
 button, input, select, textarea {
@@ -42,11 +44,20 @@ button {
 a {
 	color: inherit;
 	text-decoration: none;
+	-webkit-user-drag: none;
 }
 
 img, svg {
 	display: block;
 	max-width: 100%;
+	-webkit-user-drag: none;
+}
+
+input, textarea, [contenteditable="true"], [data-selectable="true"] {
+	-webkit-user-select: text;
+	user-select: text;
+	cursor: text;
+	-webkit-touch-callout: default;
 }
 
 ::-webkit-scrollbar {

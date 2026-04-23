@@ -76,8 +76,20 @@
 }
 
 .coverWrap {
+	display: block;
 	width: min(60vh, 480px);
 	height: min(60vh, 480px);
+	border-radius: var(--radius-lg);
+	cursor: zoom-in;
+	transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.coverWrap:hover {
+	transform: scale(1.015);
+}
+
+.coverWrap:active {
+	transform: scale(0.99);
 }
 
 .cover {

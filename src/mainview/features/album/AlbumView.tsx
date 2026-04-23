@@ -10,6 +10,7 @@ import { CoverArt } from "../../components/CoverArt";
 import { HeartButton } from "../../components/HeartButton";
 import { TrackList } from "../../components/TrackList";
 import { playQueue, toggleShuffle, $shuffle } from "../../stores/player";
+import { openLightbox } from "../../stores/lightbox";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
@@ -44,6 +45,7 @@ function AlbumBody(props: { server: ServerConfig; id: string }) {
 	);
 
 	const coverUrl = createMemo(() => client.coverArtUrl(query.data?.coverArt, 480));
+	const fullCoverUrl = createMemo(() => client.coverArtUrl(query.data?.coverArt));
 	const paletteUrl = createMemo(() => client.coverArtUrl(query.data?.coverArt, 96));
 
 	createEffect(() => {
@@ -86,11 +88,18 @@ function AlbumBody(props: { server: ServerConfig; id: string }) {
 					return (
 						<article class={styles.page}>
 							<section class={styles.hero}>
-								<CoverArt
-									src={coverUrl()}
-									name={album().name}
-									class={styles.cover}
-								/>
+								<button
+									type="button"
+									class={styles.coverZoom}
+									onClick={() => openLightbox(fullCoverUrl(), album().name)}
+									aria-label={`View artwork for ${album().name}`}
+								>
+									<CoverArt
+										src={coverUrl()}
+										name={album().name}
+										class={styles.cover}
+									/>
+								</button>
 								<div class={styles.heroText}>
 									<span class={styles.eyebrow}>Album</span>
 									<h1 class={styles.title}>{album().name}</h1>
