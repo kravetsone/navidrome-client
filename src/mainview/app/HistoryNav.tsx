@@ -12,7 +12,7 @@ export function HistoryNav() {
 		<div class={styles.nav}>
 			<button
 				type="button"
-				class={styles.btn}
+				class={`${styles.btn} electrobun-webkit-app-region-no-drag`}
 				aria-label="Back"
 				title="Back (⌘[)"
 				disabled={!canBack()}
@@ -22,7 +22,7 @@ export function HistoryNav() {
 			</button>
 			<button
 				type="button"
-				class={styles.btn}
+				class={`${styles.btn} electrobun-webkit-app-region-no-drag`}
 				aria-label="Forward"
 				title="Forward (⌘])"
 				disabled={!canForward()}

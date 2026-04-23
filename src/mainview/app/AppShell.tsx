@@ -21,7 +21,7 @@ export function AppShell(props: { children: JSX.Element }) {
 	return (
 		<div class={styles.shell}>
 			<div class={styles.ambient} />
-			<div class={styles.titlebar}>
+			<div class={`${styles.titlebar} electrobun-webkit-app-region-drag`}>
 				<span class={styles.titlebarBrand}>Navidrome</span>
 				<HistoryNav />
 				<div class={styles.titlebarSearch}>

@@ -9,7 +9,7 @@ export function SearchPill() {
 	return (
 		<button
 			type="button"
-			class={styles.pill}
+			class={`${styles.pill} electrobun-webkit-app-region-no-drag`}
 			aria-label="Open search"
 			onClick={() => openPalette()}
 		>

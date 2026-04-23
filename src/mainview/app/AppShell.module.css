@@ -48,11 +48,16 @@
 
 .titlebar {
 	grid-area: titlebar;
-	-webkit-app-region: drag;
 	display: grid;
 	grid-template-columns: var(--sidebar-width) auto 1fr;
 	align-items: center;
 	gap: var(--space-4);
+	/* NB: draggability is configured via the raw class
+	   `electrobun-webkit-app-region-drag` on the element itself
+	   (see AppShell.tsx). Electrobun does NOT read the standard
+	   Chromium `-webkit-app-region: drag` CSS property — the classes
+	   are literal strings its runtime scans the DOM for, so they
+	   must not pass through CSS Modules (which would hash them). */
 }
 
 .titlebarBrand {
@@ -73,10 +78,6 @@
 	align-items: center;
 	justify-content: center;
 	padding: 0 var(--space-5);
-}
-
-.titlebarSearch > * {
-	-webkit-app-region: no-drag;
 }
 
 .content {

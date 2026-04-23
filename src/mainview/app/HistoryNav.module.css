@@ -1,5 +1,4 @@
 .nav {
-	-webkit-app-region: no-drag;
 	display: flex;
 	align-items: center;
 	gap: 2px;
@@ -7,6 +6,9 @@
 }
 
 .btn {
+	/* no-drag is applied via the raw `electrobun-webkit-app-region-no-drag`
+	   class in HistoryNav.tsx (Electrobun doesn't honour the standard CSS
+	   property and needs literal, non-hashed class names). */
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
