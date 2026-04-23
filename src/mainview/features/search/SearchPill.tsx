@@ -14,11 +14,10 @@ export function SearchPill() {
 			onClick={() => openPalette()}
 		>
 			<Search class={styles.icon} />
-			<span class={styles.label}>Search library…</span>
-			<span class={styles.shortcut} aria-hidden="true">
-				<kbd>{isMac ? "⌘" : "Ctrl"}</kbd>
-				<kbd>K</kbd>
-			</span>
+			<span class={styles.label}>Search</span>
+			<kbd class={styles.shortcut} aria-hidden="true">
+				{isMac ? "⌘K" : "Ctrl K"}
+			</kbd>
 		</button>
 	);
 }

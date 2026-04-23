@@ -124,11 +124,16 @@ export function CommandPalette() {
 	});
 	onCleanup(() => debounceTimer && clearTimeout(debounceTimer));
 
-	const search = createQuery(() =>
-		searchQuery(ctx(), debounced().trim(), { artist: 4, album: 6, song: 8 }),
-	);
+	const search = createQuery(() => searchQuery(ctx(), debounced().trim()));
 
-	const result = () => (search.data ?? {}) as SearchResult;
+	const result = createMemo<SearchResult>(() => {
+		const r = search.data ?? {};
+		return {
+			artist: r.artist?.slice(0, 4),
+			album: r.album?.slice(0, 6),
+			song: r.song?.slice(0, 8),
+		};
+	});
 	const items = createMemo(() => flatten(result()));
 	const hasActiveSearch = () => debounced().trim().length > 0;
 

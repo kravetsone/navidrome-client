@@ -82,6 +82,144 @@
 	color: var(--text-tertiary);
 }
 
+.controls {
+	display: flex;
+	align-items: center;
+	gap: var(--space-6);
+	padding: var(--space-2) var(--space-1);
+	flex-wrap: wrap;
+}
+
+/* Tabs — segmented control */
+.tabs {
+	display: inline-flex;
+	padding: 3px;
+	background: var(--surface-glass);
+	backdrop-filter: var(--blur-md);
+	-webkit-backdrop-filter: var(--blur-md);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-full);
+	gap: 2px;
+}
+
+.tab {
+	padding: var(--space-2) var(--space-4);
+	background: transparent;
+	border: none;
+	border-radius: var(--radius-full);
+	color: var(--text-tertiary);
+	font-family: var(--font-sans);
+	font-size: var(--text-sm);
+	font-weight: var(--weight-medium);
+	cursor: pointer;
+	transition:
+		background var(--duration-fast) var(--ease-standard),
+		color var(--duration-fast) var(--ease-standard);
+}
+
+.tab:hover {
+	color: var(--text-secondary);
+}
+
+.tab[data-active="true"] {
+	background: var(--surface-panel);
+	color: var(--text-primary);
+	box-shadow: var(--ring-inset, inset 0 0 0 1px rgba(255, 255, 255, 0.06));
+}
+
+/* Chips */
+.chips {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+}
+
+.chip {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-4);
+	background: var(--surface-glass);
+	backdrop-filter: var(--blur-md);
+	-webkit-backdrop-filter: var(--blur-md);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-full);
+	color: var(--text-secondary);
+	font-family: var(--font-sans);
+	font-size: var(--text-sm);
+	cursor: pointer;
+	transition:
+		background var(--duration-fast) var(--ease-standard),
+		border-color var(--duration-fast) var(--ease-standard),
+		color var(--duration-fast) var(--ease-standard);
+}
+
+.chip:hover {
+	background: var(--surface-panel);
+	color: var(--text-primary);
+}
+
+.chip[data-active="true"] {
+	background: color-mix(in oklab, var(--accent) 18%, var(--surface-panel));
+	border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+	color: var(--text-primary);
+}
+
+.chipIcon {
+	width: 13px;
+	height: 13px;
+	color: currentColor;
+}
+
+.chip[data-active="true"] .chipIcon {
+	color: var(--accent);
+}
+
+.chipLabel {
+	pointer-events: none;
+}
+
+.chipSelect {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+	font: inherit;
+}
+
+.clearChips {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-4);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: var(--radius-full);
+	color: var(--text-tertiary);
+	font-family: var(--font-sans);
+	font-size: var(--text-sm);
+	cursor: pointer;
+	transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.clearChips:hover {
+	color: var(--text-primary);
+}
+
+/* Grid (for songs/albums/artists tabs) */
+.grid {
+	display: flex;
+	flex-direction: column;
+}
+
+.gridTiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: var(--space-6);
+}
+
 .sections {
 	display: flex;
 	flex-direction: column;
