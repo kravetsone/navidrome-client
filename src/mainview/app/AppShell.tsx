@@ -4,6 +4,7 @@ import { PlayerBar } from "./PlayerBar";
 import { CommandPalette } from "../features/search/CommandPalette";
 import { NowPlayingView } from "../features/now-playing/NowPlayingView";
 import { QueuePanel } from "../features/queue/QueuePanel";
+import { ToastViewport } from "../components/Toast";
 import { audioEngine } from "../lib/player/engine";
 import { installShortcuts } from "../lib/shortcuts";
 import styles from "./AppShell.module.css";
@@ -30,6 +31,7 @@ export function AppShell(props: { children: JSX.Element }) {
 			<CommandPalette />
 			<NowPlayingView />
 			<QueuePanel />
+			<ToastViewport />
 			<audio ref={audioRef} style={{ display: "none" }} />
 		</div>
 	);

@@ -32,6 +32,7 @@ import {
 	starMutation,
 	updatePlaylistMutation,
 } from "../lib/queries";
+import { pushToast } from "../stores/toast";
 import type { Album, Artist, Playlist, Song } from "../lib/subsonic";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
 import type { JSX, ValidComponent } from "solid-js";
@@ -39,8 +40,9 @@ import type { JSX, ValidComponent } from "solid-js";
 async function copyText(text: string) {
 	try {
 		await navigator.clipboard.writeText(text);
+		pushToast("Link copied", { variant: "success", duration: 2000 });
 	} catch {
-		// best-effort; toast in 4.9 will surface this
+		pushToast("Couldn't copy to clipboard", { variant: "error" });
 	}
 }
 

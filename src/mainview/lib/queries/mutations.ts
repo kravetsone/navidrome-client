@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/solid-query";
 import type { SubsonicClient } from "../subsonic/client";
 import type { Album, Artist, Playlist, Song } from "../subsonic/models";
+import { toastError } from "../../stores/toast";
 import { qk } from "./keys";
 
 interface MutationCtx {
@@ -120,8 +121,9 @@ export function starMutation(ctx: MutationCtx) {
 			const snapshot = applyStarToCaches(ctx.queryClient, ctx.serverId, vars);
 			return { snapshot };
 		},
-		onError: (_err: unknown, _vars: StarVars, context: { snapshot: StarSnapshot } | undefined) => {
+		onError: (err: unknown, _vars: StarVars, context: { snapshot: StarSnapshot } | undefined) => {
 			if (context?.snapshot) rollback(ctx.queryClient, context.snapshot);
+			toastError(err, "Couldn't update favorite");
 		},
 		onSettled: () => {
 			ctx.queryClient.invalidateQueries({
@@ -205,6 +207,7 @@ export function createPlaylistMutation(ctx: MutationCtx) {
 				queryKey: qk.playlists(ctx.serverId),
 			});
 		},
+		onError: (err: unknown) => toastError(err, "Couldn't create playlist"),
 	};
 }
 
@@ -229,6 +232,7 @@ export function updatePlaylistMutation(ctx: MutationCtx) {
 				queryKey: qk.playlists(ctx.serverId),
 			});
 		},
+		onError: (err: unknown) => toastError(err, "Couldn't update playlist"),
 	};
 }
 
@@ -252,13 +256,14 @@ export function deletePlaylistMutation(ctx: MutationCtx) {
 			return { prev };
 		},
 		onError: (
-			_err: unknown,
+			err: unknown,
 			_vars: DeletePlaylistVars,
 			context: { prev?: Playlist[] } | undefined,
 		) => {
 			if (context?.prev) {
 				ctx.queryClient.setQueryData(qk.playlists(ctx.serverId), context.prev);
 			}
+			toastError(err, "Couldn't delete playlist");
 		},
 		onSuccess: () => {
 			ctx.queryClient.invalidateQueries({
@@ -278,8 +283,9 @@ export function ratingMutation(ctx: MutationCtx) {
 			const snapshot = applyRatingToCaches(ctx.queryClient, ctx.serverId, vars);
 			return { snapshot };
 		},
-		onError: (_err: unknown, _vars: RatingVars, context: { snapshot: StarSnapshot } | undefined) => {
+		onError: (err: unknown, _vars: RatingVars, context: { snapshot: StarSnapshot } | undefined) => {
 			if (context?.snapshot) rollback(ctx.queryClient, context.snapshot);
+			toastError(err, "Couldn't update rating");
 		},
 	};
 }
