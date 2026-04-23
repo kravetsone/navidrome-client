@@ -2,7 +2,7 @@
 	"name": "navidrome-client",
 	"version": "0.1.0",
 	"type": "module",
-	"description": "Beautiful native macOS client for Navidrome / Subsonic servers",
+	"description": "Beautiful cross-platform client for Navidrome / Subsonic servers",
 	"license": "MIT",
 	"author": "kravetsone",
 	"homepage": "https://github.com/kravetsone/navidrome-client",
