@@ -37,6 +37,11 @@ import { $activeServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
 import { CoverArt } from "../../components/CoverArt";
 import { openLightbox } from "../../stores/lightbox";
+import {
+	applyAmbientPalette,
+	extractAmbientPalette,
+	resetAmbientPalette,
+} from "../../lib/palette";
 import { Lyrics } from "./Lyrics";
 import styles from "./NowPlayingView.module.css";
 
@@ -64,6 +69,52 @@ export function NowPlayingView() {
 		const server = activeServer();
 		if (!s || !server) return undefined;
 		return clientFor(server).coverArtUrl(s.coverArt, 720);
+	});
+
+	// Small size for the blurred backdrop — the filter destroys all detail
+	// anyway, so a 240px source renders identically at a fraction of the
+	// decode/compositor cost.
+	const backdropSrc = createMemo(() => {
+		const s = song();
+		const server = activeServer();
+		if (!s || !server) return undefined;
+		return clientFor(server).coverArtUrl(s.coverArt, 240);
+	});
+
+	// Tiny source for palette extraction — node-vibrant downsamples anyway.
+	const paletteSrc = createMemo(() => {
+		const s = song();
+		const server = activeServer();
+		if (!s || !server) return undefined;
+		return clientFor(server).coverArtUrl(s.coverArt, 96);
+	});
+
+	// While Now Playing is open, tint the UI with colours sampled from the
+	// current cover. On close, restore the ambient palette the underlying view
+	// had set (AlbumView / ArtistView / PlaylistView all set it per-page), so
+	// navigating back doesn't lose its theming.
+	createEffect(() => {
+		if (!open()) return;
+		const url = paletteSrc();
+		if (!url) return;
+		const root = document.documentElement;
+		const prevPrimary = root.style.getPropertyValue("--ambient-primary");
+		const prevSecondary = root.style.getPropertyValue("--ambient-secondary");
+		let cancelled = false;
+		extractAmbientPalette(url).then((p) => {
+			if (!cancelled && p) applyAmbientPalette(p);
+		});
+		onCleanup(() => {
+			cancelled = true;
+			if (prevPrimary) {
+				root.style.setProperty("--ambient-primary", prevPrimary);
+			} else {
+				resetAmbientPalette();
+			}
+			if (prevSecondary) {
+				root.style.setProperty("--ambient-secondary", prevSecondary);
+			}
+		});
 	});
 
 	const fullCoverSrc = createMemo(() => {
@@ -141,10 +192,10 @@ export function NowPlayingView() {
 						if (e.currentTarget === e.target) closeNowPlaying();
 					}}
 				>
-					<Show when={coverSrc()}>
+					<Show when={backdropSrc()}>
 						<div
 							class={styles.backdrop}
-							style={{ "background-image": `url(${coverSrc()})` }}
+							style={{ "background-image": `url(${backdropSrc()})` }}
 						/>
 					</Show>
 

@@ -6,9 +6,18 @@
 	align-items: center;
 	justify-content: center;
 	padding: var(--space-9) var(--space-9) var(--space-10);
-	background: rgba(8, 8, 12, 0.6);
-	backdrop-filter: blur(24px) saturate(140%);
-	-webkit-backdrop-filter: blur(24px) saturate(140%);
+	background:
+		radial-gradient(
+			ellipse 100% 70% at 20% 0%,
+			color-mix(in oklab, var(--ambient-primary) 55%, transparent),
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 80% 70% at 100% 100%,
+			color-mix(in oklab, var(--ambient-secondary) 45%, transparent),
+			transparent 60%
+		),
+		linear-gradient(180deg, #0a0a0c 0%, #050507 100%);
 	animation: fadeIn var(--duration-base) var(--ease-emphasized);
 }
 
@@ -23,10 +32,11 @@
 	z-index: -1;
 	background-size: cover;
 	background-position: center;
-	filter: blur(80px) saturate(180%);
+	filter: blur(40px) saturate(160%);
 	transform: scale(1.2);
-	opacity: 0.55;
+	opacity: 0.35;
 	pointer-events: none;
+	mix-blend-mode: screen;
 }
 
 .overlay::before {
@@ -36,9 +46,9 @@
 	z-index: -1;
 	background: linear-gradient(
 		180deg,
-		rgba(10, 10, 12, 0.2) 0%,
-		rgba(10, 10, 12, 0.55) 60%,
-		rgba(10, 10, 12, 0.8) 100%
+		rgba(6, 6, 10, 0.0) 0%,
+		rgba(6, 6, 10, 0.35) 55%,
+		rgba(4, 4, 8, 0.75) 100%
 	);
 	pointer-events: none;
 }
@@ -111,10 +121,17 @@
 	display: flex;
 	flex-direction: column;
 	border-radius: var(--radius-xl);
-	background: var(--surface-glass);
-	backdrop-filter: blur(24px) saturate(160%);
-	-webkit-backdrop-filter: blur(24px) saturate(160%);
-	border: 1px solid var(--border-subtle);
+	background:
+		linear-gradient(
+			180deg,
+			color-mix(in oklab, var(--ambient-primary) 14%, rgba(18, 18, 22, 0.78)) 0%,
+			rgba(14, 14, 18, 0.82) 100%
+		);
+	border: 1px solid
+		color-mix(in oklab, var(--ambient-primary) 22%, var(--border-subtle));
+	box-shadow:
+		0 24px 64px rgba(0, 0, 0, 0.4),
+		var(--ring-inset);
 	overflow: hidden;
 	animation: panelSlideIn var(--duration-base) var(--ease-emphasized);
 	min-height: min(60vh, 520px);
@@ -218,8 +235,8 @@
 }
 
 .overlay[data-lyrics="cinematic"] .backdrop {
-	filter: blur(120px) saturate(180%);
-	opacity: 0.45;
+	filter: blur(56px) saturate(180%);
+	opacity: 0.4;
 }
 
 .overlay[data-lyrics="cinematic"]::before {

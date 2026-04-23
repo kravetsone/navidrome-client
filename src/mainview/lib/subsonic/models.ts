@@ -69,6 +69,26 @@ export interface SearchResult {
 	song?: Song[];
 }
 
+export interface LyricLine {
+	/** milliseconds since song start; may be absent on unsynced lyrics */
+	start?: number;
+	value: string;
+}
+
+export type LyricsSource = "server" | "lrclib";
+
+export interface StructuredLyrics {
+	displayArtist?: string;
+	displayTitle?: string;
+	lang?: string;
+	/** global timing offset in ms to apply to all line starts */
+	offset?: number;
+	synced: boolean;
+	line: LyricLine[];
+	/** Where the lyrics came from. "server" = Navidrome, "lrclib" = external LRCLIB fallback. */
+	source?: LyricsSource;
+}
+
 export type AlbumListType =
 	| "random"
 	| "newest"

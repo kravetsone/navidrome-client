@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/solid-query";
 import type { SubsonicClient } from "../subsonic/client";
-import type { AlbumListType, SearchResult } from "../subsonic";
+import type { AlbumListType, SearchResult, StructuredLyrics } from "../subsonic";
+import { fetchFromLrclib } from "../lyrics/lrclib";
 import { qk } from "./keys";
 
 const FIVE_MIN = 5 * 60 * 1000;
@@ -97,11 +98,59 @@ export function genresQuery({ client, serverId }: ClientCtx) {
 	});
 }
 
-export function searchQuery(
+export function lyricsQuery(
 	ctx: ClientCtx | null,
-	query: string,
-	counts: { artist?: number; album?: number; song?: number } = {},
+	song: {
+		id: string;
+		artist?: string;
+		title?: string;
+		duration?: number;
+	} | null,
 ) {
+	const enabled = Boolean(ctx && song);
+	return queryOptions({
+		queryKey:
+			ctx && song ? qk.lyrics(ctx.serverId, song.id) : ["lyrics-disabled"],
+		queryFn: async (): Promise<StructuredLyrics | null> => {
+			if (!ctx || !song) return null;
+
+			// 1) Server-side lyrics (embedded tags, sidecar .lrc on the Navidrome host).
+			const server = await ctx.client.getStructuredLyrics(song.id, {
+				artist: song.artist,
+				title: song.title,
+			});
+			const serverHit: StructuredLyrics | null =
+				server && server.line.length > 0
+					? { ...server, source: "server" }
+					: null;
+
+			// If the server already has synced lyrics, use them — plain text
+			// from LRCLIB would be a downgrade.
+			if (serverHit?.synced) return serverHit;
+
+			// 2) Try LRCLIB — either because the server had nothing or only
+			// unsynced text. Prefer a synced LRCLIB hit as an upgrade; otherwise
+			// fall through to whatever the server gave us.
+			if (song.artist && song.title) {
+				const lrclib = await fetchFromLrclib({
+					artist: song.artist,
+					title: song.title,
+					duration: song.duration,
+				});
+				if (lrclib?.synced) return lrclib;
+				// LRCLIB unsynced is only useful if we had nothing from the server.
+				if (lrclib && !serverHit) return lrclib;
+			}
+
+			return serverHit;
+		},
+		enabled,
+		staleTime: 24 * 60 * 60 * 1000, // lyrics rarely change
+		gcTime: 60 * 60 * 1000,
+	});
+}
+
+export function searchQuery(ctx: ClientCtx | null, query: string) {
 	const enabled = Boolean(ctx) && query.trim().length > 0;
 	return queryOptions({
 		queryKey: ctx ? qk.search(ctx.serverId, query) : ["search-disabled"],
@@ -109,9 +158,9 @@ export function searchQuery(
 			if (!ctx) return {};
 			return ctx.client.search3({
 				query,
-				artistCount: counts.artist ?? 4,
-				albumCount: counts.album ?? 6,
-				songCount: counts.song ?? 8,
+				artistCount: 20,
+				albumCount: 30,
+				songCount: 50,
 			});
 		},
 		enabled,

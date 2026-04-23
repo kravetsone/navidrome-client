@@ -47,4 +47,7 @@ export const qk = {
 
 	genres: (serverId: string) =>
 		[...qk.server(serverId), "genres"] as const,
+
+	lyrics: (serverId: string, songId: string) =>
+		[...qk.server(serverId), "lyrics", songId] as const,
 };

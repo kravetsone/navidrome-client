@@ -7,6 +7,7 @@ import type {
 	Playlist,
 	SearchResult,
 	Song,
+	StructuredLyrics,
 } from "./models";
 import {
 	type ServerConfig,
@@ -324,6 +325,56 @@ export class SubsonicClient {
 	async setRating(id: string, rating: number): Promise<void> {
 		const r = Math.max(0, Math.min(5, Math.round(rating)));
 		await this.call("setRating", { id, rating: r });
+	}
+
+	/**
+	 * OpenSubsonic getLyricsBySongId — returns synced LRC lines when available.
+	 * Falls back to classic getLyrics (artist+title lookup, unsynced plain text)
+	 * if the server lacks the songLyrics extension or returns nothing.
+	 */
+	async getStructuredLyrics(
+		songId: string,
+		fallback?: { artist?: string; title?: string },
+	): Promise<StructuredLyrics | null> {
+		try {
+			const resp = (await this.call("getLyricsBySongId", { id: songId })) as SubsonicResponse & {
+				lyricsList?: { structuredLyrics?: StructuredLyrics[] };
+			};
+			const entries = resp.lyricsList?.structuredLyrics ?? [];
+			if (entries.length > 0) {
+				// Prefer a synced entry if present
+				const synced = entries.find((e) => e.synced && e.line?.length);
+				const first = entries.find((e) => e.line?.length);
+				return synced ?? first ?? null;
+			}
+		} catch (e) {
+			if (!(e instanceof SubsonicError) || e.code !== 70) {
+				// 70 = not found; other errors (no extension, etc.) → try fallback
+			}
+		}
+
+		if (!fallback?.artist && !fallback?.title) return null;
+		try {
+			const resp = (await this.call("getLyrics", {
+				artist: fallback.artist ?? null,
+				title: fallback.title ?? null,
+			})) as SubsonicResponse & {
+				lyrics?: { artist?: string; title?: string; value?: string };
+			};
+			const text = resp.lyrics?.value?.trim();
+			if (!text) return null;
+			return {
+				displayArtist: resp.lyrics?.artist,
+				displayTitle: resp.lyrics?.title,
+				synced: false,
+				line: text
+					.split(/\r?\n/)
+					.map((value) => ({ value }))
+					.filter((l) => l.value.length > 0),
+			};
+		} catch {
+			return null;
+		}
 	}
 
 	async search3(options: {
