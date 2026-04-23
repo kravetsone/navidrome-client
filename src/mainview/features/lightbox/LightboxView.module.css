@@ -8,13 +8,21 @@
 	background: rgba(0, 0, 0, 0.88);
 	backdrop-filter: blur(32px) saturate(120%);
 	-webkit-backdrop-filter: blur(32px) saturate(120%);
-	animation: fadeIn var(--duration-base) var(--ease-emphasized);
+	animation: lightboxIn var(--duration-slow) var(--ease-emphasized);
 	cursor: zoom-out;
 }
 
-@keyframes fadeIn {
-	from { opacity: 0; }
-	to { opacity: 1; }
+@keyframes lightboxIn {
+	from {
+		opacity: 0;
+		backdrop-filter: blur(0) saturate(100%);
+		-webkit-backdrop-filter: blur(0) saturate(100%);
+	}
+	to {
+		opacity: 1;
+		backdrop-filter: blur(32px) saturate(120%);
+		-webkit-backdrop-filter: blur(32px) saturate(120%);
+	}
 }
 
 .closeBtn {

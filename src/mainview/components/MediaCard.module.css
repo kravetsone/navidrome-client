@@ -4,6 +4,13 @@
 	gap: var(--space-4);
 	cursor: default;
 	min-width: 0;
+	animation: cardRise 260ms var(--ease-standard) both;
+	animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+@keyframes cardRise {
+	from { opacity: 0; transform: translateY(10px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 
 .card:hover .cover {

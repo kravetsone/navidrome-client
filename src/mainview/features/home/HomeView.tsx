@@ -90,7 +90,9 @@ function AlbumRail(props: {
 					fallback={<EmptyRail type={props.type} />}
 				>
 					<For each={query.data!}>
-						{(album) => <AlbumCell album={album} server={props.server} />}
+						{(album, i) => (
+							<AlbumCell album={album} server={props.server} index={i()} />
+						)}
 					</For>
 				</Show>
 			</Show>
@@ -98,7 +100,11 @@ function AlbumRail(props: {
 	);
 }
 
-function AlbumCell(props: { album: Album; server: ServerConfig }) {
+function AlbumCell(props: {
+	album: Album;
+	server: ServerConfig;
+	index?: number;
+}) {
 	const client = clientFor(props.server);
 	return (
 		<AlbumContextMenu album={props.album}>
@@ -108,6 +114,7 @@ function AlbumCell(props: { album: Album; server: ServerConfig }) {
 				subtitle={props.album.artist}
 				meta={props.album.year ? String(props.album.year) : undefined}
 				coverSrc={client.coverArtUrl(props.album.coverArt, 360)}
+				index={props.index}
 			/>
 		</AlbumContextMenu>
 	);

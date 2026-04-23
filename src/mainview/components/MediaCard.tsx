@@ -11,11 +11,17 @@ interface MediaCardProps {
 	coverSrc?: string;
 	coverFallbackSrc?: string;
 	round?: boolean;
+	index?: number;
 }
 
 export function MediaCard(props: MediaCardProps) {
 	return (
-		<A href={props.href} class={styles.card} data-round={props.round}>
+		<A
+			href={props.href}
+			class={styles.card}
+			data-round={props.round}
+			style={{ "--i": Math.min(props.index ?? 0, 24) }}
+		>
 			<CoverArt
 				src={props.coverSrc}
 				fallbackSrc={props.coverFallbackSrc}

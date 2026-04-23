@@ -92,6 +92,7 @@
 
 /* Tabs — segmented control */
 .tabs {
+	position: relative;
 	display: inline-flex;
 	padding: 3px;
 	background: var(--surface-glass);
@@ -102,7 +103,31 @@
 	gap: 2px;
 }
 
+.tabIndicator {
+	position: absolute;
+	top: 3px;
+	bottom: 3px;
+	left: 0;
+	width: 0;
+	background: var(--surface-panel);
+	border-radius: var(--radius-full);
+	box-shadow: var(--ring-inset, inset 0 0 0 1px rgba(255, 255, 255, 0.06));
+	transform: translateX(0);
+	transition:
+		transform var(--duration-base) var(--ease-spring),
+		width var(--duration-base) var(--ease-spring),
+		opacity var(--duration-fast) var(--ease-standard);
+	pointer-events: none;
+	z-index: 0;
+}
+
+.tabIndicator[data-visible="false"] {
+	opacity: 0;
+}
+
 .tab {
+	position: relative;
+	z-index: 1;
 	padding: var(--space-2) var(--space-4);
 	background: transparent;
 	border: none;
@@ -112,9 +137,7 @@
 	font-size: var(--text-sm);
 	font-weight: var(--weight-medium);
 	cursor: pointer;
-	transition:
-		background var(--duration-fast) var(--ease-standard),
-		color var(--duration-fast) var(--ease-standard);
+	transition: color var(--duration-fast) var(--ease-standard);
 }
 
 .tab:hover {
@@ -122,9 +145,7 @@
 }
 
 .tab[data-active="true"] {
-	background: var(--surface-panel);
 	color: var(--text-primary);
-	box-shadow: var(--ring-inset, inset 0 0 0 1px rgba(255, 255, 255, 0.06));
 }
 
 /* Chips */
@@ -388,6 +409,69 @@
 	border-radius: var(--radius-sm);
 	font-family: var(--font-mono);
 	font-size: 11px;
+	color: var(--text-secondary);
+}
+
+.emptyFilters {
+	display: inline-flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--space-3);
+	margin-top: var(--space-2);
+}
+
+.emptyFilterChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-4);
+	background: var(--surface-glass);
+	border: 1px dashed var(--border-subtle);
+	border-radius: var(--radius-full);
+	color: var(--text-tertiary);
+	font-family: var(--font-sans);
+	font-size: var(--text-sm);
+	pointer-events: none;
+}
+
+.emptyCta {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-3);
+	margin-top: var(--space-3);
+	padding: var(--space-3) var(--space-5);
+	background: color-mix(in oklab, var(--accent) 22%, var(--surface-panel));
+	border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+	border-radius: var(--radius-full);
+	color: var(--text-primary);
+	font-family: var(--font-sans);
+	font-size: var(--text-sm);
+	font-weight: var(--weight-medium);
+	cursor: pointer;
+	transition:
+		background var(--duration-fast) var(--ease-standard),
+		border-color var(--duration-fast) var(--ease-standard),
+		transform var(--duration-fast) var(--ease-standard);
+}
+
+.emptyCta:hover {
+	background: color-mix(in oklab, var(--accent) 32%, var(--surface-panel));
+	border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+	transform: translateY(-1px);
+}
+
+.emptyCta svg {
+	width: 14px;
+	height: 14px;
+}
+
+.emptyCta kbd {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	padding: 1px 6px;
+	background: color-mix(in oklab, var(--bg-base) 45%, transparent);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-sm);
 	color: var(--text-secondary);
 }
 

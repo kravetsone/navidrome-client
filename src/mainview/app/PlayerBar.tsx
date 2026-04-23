@@ -129,10 +129,10 @@ export function PlayerBar() {
 					}
 				>
 					{(s) => (
-						<>
+						<Show when={s().id} keyed>
 							<button
 								type="button"
-								class={styles.coverButton}
+								class={`${styles.coverButton} ${styles.trackSwap}`}
 								onClick={openNowPlaying}
 								aria-label="Open now playing"
 							>
@@ -142,7 +142,7 @@ export function PlayerBar() {
 									class={styles.artImg}
 								/>
 							</button>
-							<div class={styles.trackText}>
+							<div class={`${styles.trackText} ${styles.trackSwap}`}>
 								<Show
 									when={s().albumId}
 									fallback={
@@ -172,7 +172,7 @@ export function PlayerBar() {
 									</Show>
 								</Show>
 							</div>
-						</>
+						</Show>
 					)}
 				</Show>
 			</div>

@@ -295,7 +295,7 @@ function AlbumsGrid(props: {
 			>
 				<div class={styles.grid}>
 					<For each={query.data!}>
-						{(album) => (
+						{(album, i) => (
 							<AlbumContextMenu album={album}>
 								<MediaCard
 									href={`/album/${encodeURIComponent(album.id)}`}
@@ -303,6 +303,7 @@ function AlbumsGrid(props: {
 									subtitle={album.artist}
 									meta={album.year ? String(album.year) : undefined}
 									coverSrc={client.coverArtUrl(album.coverArt, 360)}
+									index={i()}
 								/>
 							</AlbumContextMenu>
 						)}

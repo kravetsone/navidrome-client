@@ -67,6 +67,15 @@
 	padding: 0 var(--space-8) var(--space-8);
 }
 
+.content > * {
+	animation: routeIn var(--duration-base) var(--ease-standard) both;
+}
+
+@keyframes routeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
 .player {
 	grid-area: player;
 	background: var(--surface-panel);
