@@ -20,6 +20,8 @@ import { $activeServer } from "../../stores/servers";
 import { clientFor } from "../queries/useActiveClient";
 
 const PRELOAD_THRESHOLD_SECONDS = 10;
+const SCROBBLE_SUBMIT_SECONDS = 240;
+const SCROBBLE_SUBMIT_RATIO = 0.5;
 
 class AudioEngine {
 	private el: HTMLAudioElement | null = null;
@@ -27,6 +29,7 @@ class AudioEngine {
 	private preloadedUrl: string | null = null;
 	private currentSongId: string | null = null;
 	private attached = false;
+	private scrobbleSubmitted = false;
 	private onEnded: (song: ReturnType<typeof $currentSong.get>) => void = () => {};
 	private onTrackStart: (
 		song: ReturnType<typeof $currentSong.get>,
@@ -81,6 +84,7 @@ class AudioEngine {
 		$position.set(this.el.currentTime);
 		this.updateMediaSessionPosition();
 		this.maybePreloadNext();
+		this.maybeSubmitScrobble();
 	};
 
 	private handleDurationChange = () => {
@@ -102,6 +106,9 @@ class AudioEngine {
 
 	private handleEnded = () => {
 		const song = $currentSong.get();
+		if (song && !this.scrobbleSubmitted) {
+			this.submitScrobbleNow(song.id);
+		}
 		this.onEnded(song);
 		if ($repeat.get() === "one") {
 			if (this.el) {
@@ -141,6 +148,8 @@ class AudioEngine {
 		$duration.set(song.duration ?? 0);
 
 		this.clearPreload();
+		this.scrobbleSubmitted = false;
+		this.sendScrobble(client, song.id, false);
 		this.updateMediaSessionMetadata(song, client);
 		this.onTrackStart(song);
 
@@ -149,6 +158,40 @@ class AudioEngine {
 				$isPlaying.set(false);
 			});
 		}
+	}
+
+	private maybeSubmitScrobble() {
+		if (this.scrobbleSubmitted || !this.el) return;
+		const duration = this.el.duration;
+		const position = this.el.currentTime;
+		if (!Number.isFinite(duration) || duration <= 0) return;
+		const halfway = duration * SCROBBLE_SUBMIT_RATIO;
+		if (position >= SCROBBLE_SUBMIT_SECONDS || position >= halfway) {
+			const songId = this.currentSongId;
+			if (!songId) return;
+			this.submitScrobbleNow(songId);
+		}
+	}
+
+	private submitScrobbleNow(songId: string) {
+		this.scrobbleSubmitted = true;
+		const server = $activeServer.get();
+		if (!server) return;
+		this.sendScrobble(clientFor(server), songId, true);
+	}
+
+	private sendScrobble(
+		client: SubsonicClient,
+		songId: string,
+		submission: boolean,
+	) {
+		client
+			.call("scrobble", {
+				id: songId,
+				submission,
+				time: Date.now(),
+			})
+			.catch(() => {});
 	}
 
 	private setupMediaSessionHandlers() {
