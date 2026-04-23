@@ -1,8 +1,10 @@
 import { BrowserView, BrowserWindow, Updater } from "electrobun/bun";
 import { installApplicationMenu } from "./menu";
 import { discordPresence } from "./discord-presence";
+import { persistence } from "./db";
 import type { AppRPCSchema } from "../shared/rpc-schema";
 import type { PresencePayload } from "../shared/discord";
+import { HISTORY_LIMIT } from "../shared/persistence";
 
 installApplicationMenu();
 
@@ -35,6 +37,29 @@ const rpc = BrowserView.defineRPC<AppRPCSchema>({
 			},
 			clearDiscordPresence: () => {
 				discordPresence.clear();
+			},
+			persistenceSnapshot: () => ({
+				kv: persistence.kvGetAll(),
+				servers: persistence.serversList().map((r) => r.data),
+				history: persistence.historyList(HISTORY_LIMIT),
+			}),
+			kvSet: ({ key, value }: { key: string; value: unknown }) => {
+				persistence.kvSet(key, value);
+			},
+			kvDelete: ({ key }: { key: string }) => {
+				persistence.kvDelete(key);
+			},
+			serversReplaceAll: ({ entries }: { entries: Array<{ id: string; data: unknown }> }) => {
+				persistence.serversReplaceAll(entries);
+			},
+			serversDelete: ({ id }: { id: string }) => {
+				persistence.serversDelete(id);
+			},
+			historyAdd: ({ entry }: { entry: { songId: string; playedAt: number; song: unknown } }) => {
+				persistence.historyAdd(entry, HISTORY_LIMIT);
+			},
+			historyClear: () => {
+				persistence.historyClear();
 			},
 		},
 	},

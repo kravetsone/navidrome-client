@@ -1,5 +1,10 @@
 import { atom } from "nanostores";
 import type { Song } from "../lib/subsonic";
+import {
+	getSnapshot,
+	persistHistoryAdd,
+	persistHistoryClear,
+} from "../lib/persistence";
 
 export interface HistoryEntry {
 	songId: string;
@@ -7,41 +12,39 @@ export interface HistoryEntry {
 	song: Song;
 }
 
-const KEY = "navidrome-client.history";
 const LIMIT = 200;
 
-function load(): HistoryEntry[] {
-	try {
-		const raw = localStorage.getItem(KEY);
-		if (!raw) return [];
-		const parsed = JSON.parse(raw) as HistoryEntry[];
-		if (!Array.isArray(parsed)) return [];
-		return parsed.filter(
-			(e) =>
-				e &&
-				typeof e.songId === "string" &&
-				typeof e.playedAt === "number" &&
-				e.song &&
-				typeof e.song.id === "string",
-		);
-	} catch {
-		return [];
-	}
+export const $playHistory = atom<HistoryEntry[]>([]);
+
+function isValid(e: unknown): e is HistoryEntry {
+	if (!e || typeof e !== "object") return false;
+	const o = e as HistoryEntry;
+	return (
+		typeof o.songId === "string" &&
+		typeof o.playedAt === "number" &&
+		!!o.song &&
+		typeof o.song.id === "string"
+	);
 }
 
-export const $playHistory = atom<HistoryEntry[]>(load());
-
-$playHistory.subscribe((entries) => {
-	try {
-		localStorage.setItem(KEY, JSON.stringify(entries.slice(0, LIMIT)));
-	} catch {}
-});
+export function hydrateHistory(): void {
+	const snap = getSnapshot();
+	const entries = snap.history.filter(isValid).slice(0, LIMIT);
+	$playHistory.set(entries);
+}
 
 export function recordPlay(song: Song) {
 	const now = Date.now();
 	const prev = $playHistory.get();
 	const last = prev[0];
 	if (last && last.songId === song.id && now - last.playedAt < 30_000) return;
-	const next = [{ songId: song.id, playedAt: now, song }, ...prev].slice(0, LIMIT);
+	const entry: HistoryEntry = { songId: song.id, playedAt: now, song };
+	const next = [entry, ...prev].slice(0, LIMIT);
 	$playHistory.set(next);
+	persistHistoryAdd({ songId: entry.songId, playedAt: entry.playedAt, song: entry.song });
+}
+
+export function clearHistory() {
+	$playHistory.set([]);
+	persistHistoryClear();
 }

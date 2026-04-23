@@ -2,14 +2,16 @@ import { atom, computed } from "nanostores";
 import { SubsonicClient } from "../lib/subsonic/client";
 import { probeServer } from "../lib/subsonic/probe";
 import type { ServerConfig } from "../lib/subsonic/types";
-import { storage } from "../lib/storage";
+import {
+	getSnapshot,
+	persistKv,
+	persistServersReplaceAll,
+} from "../lib/persistence";
 
 export type ConnectionStatus = "unknown" | "connecting" | "online" | "offline";
 
-const initial = storage.load();
-
-export const $servers = atom<ServerConfig[]>(initial.servers);
-export const $activeServerId = atom<string | null>(initial.activeServerId);
+export const $servers = atom<ServerConfig[]>([]);
+export const $activeServerId = atom<string | null>(null);
 export const $status = atom<ConnectionStatus>("unknown");
 
 export const $activeServer = computed(
@@ -19,15 +21,28 @@ export const $activeServer = computed(
 
 export const $hasServers = computed($servers, (list) => list.length > 0);
 
-function persist() {
-	storage.save({
-		servers: $servers.get(),
-		activeServerId: $activeServerId.get(),
-	});
-}
+let wired = false;
 
-$servers.subscribe(persist);
-$activeServerId.subscribe(persist);
+export function hydrateServers(): void {
+	const snap = getSnapshot();
+	const servers = snap.servers.filter(
+		(s): s is ServerConfig =>
+			typeof s === "object" && s !== null && typeof (s as ServerConfig).id === "string",
+	);
+	$servers.set(servers);
+	const activeId = snap.kv.activeServerId;
+	$activeServerId.set(typeof activeId === "string" ? activeId : null);
+
+	if (!wired) {
+		wired = true;
+		$servers.listen((list) => {
+			persistServersReplaceAll(list.map((s) => ({ id: s.id, data: s })));
+		});
+		$activeServerId.listen((id) => {
+			persistKv("activeServerId", id);
+		});
+	}
+}
 
 export function addServer(server: ServerConfig, makeActive = true) {
 	const list = $servers.get();
