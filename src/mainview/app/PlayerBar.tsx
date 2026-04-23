@@ -32,7 +32,7 @@ import {
 	toggleQueue,
 	$queueOpen,
 } from "../stores/player";
-import { $activeServer } from "../stores/servers";
+import { $isCrossServerPlayback, $queueServer } from "../stores/servers";
 import { clientFor } from "../lib/queries/useActiveClient";
 import { CoverArt } from "../components/CoverArt";
 import { HeartButton } from "../components/HeartButton";
@@ -55,12 +55,13 @@ export function PlayerBar() {
 	const volume = useStore($volume);
 	const repeat = useStore($repeat);
 	const shuffle = useStore($shuffle);
-	const activeServer = useStore($activeServer);
+	const queueServer = useStore($queueServer);
+	const crossServer = useStore($isCrossServerPlayback);
 	const queueOpen = useStore($queueOpen);
 
 	const coverSrc = createMemo(() => {
 		const s = song();
-		const server = activeServer();
+		const server = queueServer();
 		if (!s || !server) return undefined;
 		return clientFor(server).coverArtUrl(s.coverArt, 96);
 	});
@@ -143,6 +144,14 @@ export function PlayerBar() {
 								/>
 							</button>
 							<div class={`${styles.trackText} ${styles.trackSwap}`}>
+								<Show when={crossServer() && queueServer()}>
+									<span
+										class={styles.crossServer}
+										title={`Playing from ${queueServer()?.name ?? "another server"} — switch back to queue more tracks`}
+									>
+										{queueServer()?.name ?? "other server"}
+									</span>
+								</Show>
 								<Show
 									when={s().albumId}
 									fallback={

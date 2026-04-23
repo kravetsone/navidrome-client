@@ -101,6 +101,35 @@
 	font-style: italic;
 }
 
+.crossServer {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	align-self: flex-start;
+	padding: 1px 6px;
+	margin-bottom: 2px;
+	font-size: 10px;
+	font-weight: var(--weight-semibold);
+	letter-spacing: var(--tracking-wide);
+	text-transform: uppercase;
+	color: var(--accent);
+	background: var(--accent-glow);
+	border-radius: var(--radius-sm);
+	max-width: 160px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.crossServer::before {
+	content: "";
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--accent);
+	flex-shrink: 0;
+}
+
 .controls {
 	display: flex;
 	flex-direction: column;

@@ -33,7 +33,7 @@ import {
 	toggleShuffle,
 	togglePlay,
 } from "../../stores/player";
-import { $activeServer } from "../../stores/servers";
+import { $queueServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
 import { CoverArt } from "../../components/CoverArt";
 import { openLightbox } from "../../stores/lightbox";
@@ -62,7 +62,7 @@ export function NowPlayingView() {
 	const duration = useStore($duration);
 	const shuffle = useStore($shuffle);
 	const repeat = useStore($repeat);
-	const activeServer = useStore($activeServer);
+	const activeServer = useStore($queueServer);
 	const lyricsMode = useStore($lyricsMode);
 
 	const coverSrc = createMemo(() => {

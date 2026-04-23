@@ -1,11 +1,11 @@
 import { batched } from "nanostores";
 import { $currentSong } from "../stores/player";
-import { $activeServer } from "../stores/servers";
+import { $queueServer } from "../stores/servers";
 import { clientFor } from "./queries/useActiveClient";
 import { extractAmbientPalette } from "./palette";
 
 export function installAmbientPrewarm(): void {
-	const merged = batched([$currentSong, $activeServer], (song, server) => ({
+	const merged = batched([$currentSong, $queueServer], (song, server) => ({
 		coverArt: song?.coverArt,
 		server,
 	}));

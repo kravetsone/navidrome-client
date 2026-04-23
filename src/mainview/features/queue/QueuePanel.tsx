@@ -33,7 +33,7 @@ import {
 	reorderQueue,
 	toggleSmartRadio,
 } from "../../stores/player";
-import { $activeServer } from "../../stores/servers";
+import { $queueServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
 import type { Song } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
@@ -79,7 +79,7 @@ export function QueuePanel() {
 	const open = useStore($queueOpen);
 	const queue = useStore($queue);
 	const currentIndex = useStore($currentIndex);
-	const activeServer = useStore($activeServer);
+	const activeServer = useStore($queueServer);
 	const queueSources = useStore($queueSources);
 	const smartRadio = useStore($smartRadio);
 	const [historyOpen, setHistoryOpen] = createSignal(false);

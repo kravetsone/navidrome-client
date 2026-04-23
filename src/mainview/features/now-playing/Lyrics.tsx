@@ -9,7 +9,7 @@ import {
 	exitLyricsCinematic,
 	seek,
 } from "../../stores/player";
-import { $activeServer } from "../../stores/servers";
+import { $queueServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
 import { lyricsQuery } from "../../lib/queries";
 import type { StructuredLyrics } from "../../lib/subsonic";
@@ -21,7 +21,7 @@ interface LyricsProps {
 
 export function Lyrics(props: LyricsProps) {
 	const song = useStore($currentSong);
-	const server = useStore($activeServer);
+	const server = useStore($queueServer);
 	const position = useStore($position);
 
 	const query = createQuery(() => {
@@ -39,10 +39,11 @@ export function Lyrics(props: LyricsProps) {
 		Boolean(lyrics()?.synced && lyrics()?.line?.some((l) => typeof l.start === "number"));
 
 	// Trigger the active-line highlight slightly before the timestamp is reached.
-	// ~120ms matches the perceived "beat hit" moment: the scroll transition and
-	// active-style change need a beat of visual inertia, and LRC timings often
-	// land exactly on the vocal attack rather than a few frames before.
-	const LOOKAHEAD_MS = 120;
+	// With the current line transition (~220ms colour, ~280ms scale), the line
+	// visually "settles" ~160ms after activeIndex flips — so a 160ms lookahead
+	// lines that moment up with the LRC timestamp itself (which typically sits
+	// right on the vocal attack).
+	const LOOKAHEAD_MS = 160;
 
 	const activeIndex = createMemo(() => {
 		const l = lyrics();

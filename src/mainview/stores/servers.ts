@@ -12,11 +12,26 @@ export type ConnectionStatus = "unknown" | "connecting" | "online" | "offline";
 
 export const $servers = atom<ServerConfig[]>([]);
 export const $activeServerId = atom<string | null>(null);
+export const $queueServerId = atom<string | null>(null);
 export const $status = atom<ConnectionStatus>("unknown");
 
 export const $activeServer = computed(
 	[$servers, $activeServerId],
 	(list, id) => list.find((s) => s.id === id) ?? null,
+);
+
+// The server the current queue was loaded from. May differ from the active
+// server when the user navigates another library while playback continues.
+// Falls back to the active server so components don't flash an empty state
+// during hydration or after the queue is drained.
+export const $queueServer = computed(
+	[$servers, $queueServerId, $activeServer],
+	(list, id, active) => (id ? list.find((s) => s.id === id) ?? null : active),
+);
+
+export const $isCrossServerPlayback = computed(
+	[$queueServerId, $activeServerId],
+	(qId, aId) => qId !== null && aId !== null && qId !== aId,
 );
 
 export const $hasServers = computed($servers, (list) => list.length > 0);
@@ -32,6 +47,8 @@ export function hydrateServers(): void {
 	$servers.set(servers);
 	const activeId = snap.kv.activeServerId;
 	$activeServerId.set(typeof activeId === "string" ? activeId : null);
+	const queueId = snap.kv.queueServerId;
+	$queueServerId.set(typeof queueId === "string" ? queueId : null);
 
 	if (!wired) {
 		wired = true;
@@ -40,6 +57,9 @@ export function hydrateServers(): void {
 		});
 		$activeServerId.listen((id) => {
 			persistKv("activeServerId", id);
+		});
+		$queueServerId.listen((id) => {
+			persistKv("queueServerId", id);
 		});
 	}
 }
@@ -68,6 +88,11 @@ export function removeServer(id: string) {
 	void import("../lib/queries/useActiveClient").then((m) => m.invalidateClient(id));
 	if ($activeServerId.get() === id) {
 		$activeServerId.set(next[0]?.id ?? null);
+	}
+	if ($queueServerId.get() === id) {
+		// The queue was sourced from the deleted server — drop it; the audio
+		// element's URLs are about to 401 anyway.
+		void import("./player").then((m) => m.clearQueue());
 	}
 }
 

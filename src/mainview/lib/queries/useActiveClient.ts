@@ -1,6 +1,6 @@
 import { createMemo } from "solid-js";
 import { useStore } from "@nanostores/solid";
-import { $activeServer } from "../../stores/servers";
+import { $activeServer, $queueServer } from "../../stores/servers";
 import { SubsonicClient } from "../subsonic/client";
 import type { ServerConfig } from "../subsonic/types";
 
@@ -35,4 +35,25 @@ export function useActiveClient() {
 		if (!server) return null;
 		return { client: clientFor(server), serverId: server.id };
 	});
+}
+
+/**
+ * Client tied to the server the current queue was loaded from. Player, queue,
+ * and now-playing chrome must resolve cover/stream URLs through this — not
+ * the active-server client — so playback keeps working while the user browses
+ * a different library.
+ */
+export function useQueueClient() {
+	const queueServer = useStore($queueServer);
+	return createMemo(() => {
+		const server = queueServer();
+		if (!server) return null;
+		return { client: clientFor(server), serverId: server.id };
+	});
+}
+
+export function clientForQueue(): SubsonicClient | null {
+	const server = $queueServer.get();
+	if (!server) return null;
+	return clientFor(server);
 }

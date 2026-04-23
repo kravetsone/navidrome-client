@@ -18,7 +18,7 @@ import {
 } from "../../stores/player";
 import type { Song } from "../subsonic";
 import type { SubsonicClient } from "../subsonic/client";
-import { $activeServer } from "../../stores/servers";
+import { $queueServer } from "../../stores/servers";
 import { recordPlay } from "../../stores/history";
 import { notifyTrackEnded } from "../../stores/sleepTimer";
 import { clientFor } from "../queries/useActiveClient";
@@ -36,9 +36,60 @@ class AudioEngine {
 	private scrobbleSubmitted = false;
 	private rafHandle: number | null = null;
 	private pendingResumeSeek: number | null = null;
+	// True between `seeking` and `seeked` events. While set, neither rAF nor
+	// timeupdate are allowed to overwrite $position — the audio element briefly
+	// reports its *old* currentTime during that window, which would otherwise
+	// snap the progress bar (and the lyrics active-line) back to where we came
+	// from and then forward again.
+	private isSeeking = false;
+	// Disposers for subscriptions registered in attach(). We call all of these
+	// on re-attach so Vite HMR doesn't accumulate ghost listeners that each
+	// write to $position (the cause of the progress bar jumping left/right).
+	private teardown: Array<() => void> = [];
+
+	private detach() {
+		for (const dispose of this.teardown) {
+			try {
+				dispose();
+			} catch {}
+		}
+		this.teardown = [];
+		if (this.rafHandle != null) {
+			cancelAnimationFrame(this.rafHandle);
+			this.rafHandle = null;
+		}
+		const el = this.el;
+		if (el) {
+			el.removeEventListener("timeupdate", this.handleTimeUpdate);
+			el.removeEventListener("durationchange", this.handleDurationChange);
+			el.removeEventListener("loadedmetadata", this.handleDurationChange);
+			el.removeEventListener("play", this.handlePlay);
+			el.removeEventListener("pause", this.handlePause);
+			el.removeEventListener("ended", this.handleEnded);
+			el.removeEventListener("error", this.handleError);
+			el.removeEventListener("seeking", this.handleSeeking);
+			el.removeEventListener("seeked", this.handleSeeked);
+			// Silence the previous element before letting it go. If Solid HMR
+			// spawned a new <audio> the old one is still in the document with
+			// an active src — without this it would keep streaming alongside
+			// the new one, producing two tracks at once.
+			try {
+				el.pause();
+				el.removeAttribute("src");
+				el.load();
+			} catch {}
+		}
+		this.currentSongId = null;
+		this.attached = false;
+	}
 
 	attach(el: HTMLAudioElement) {
 		if (this.el === el && this.attached) return;
+		// Fully tear down any previous attachment — event listeners AND
+		// nanostore subscriptions — before wiring the new element. Without
+		// this, an HMR reload would leave the old subscriptions writing into
+		// $position alongside the new ones, producing the visible jitter.
+		if (this.attached) this.detach();
 		this.el = el;
 		this.attached = true;
 
@@ -52,28 +103,41 @@ class AudioEngine {
 		el.addEventListener("pause", this.handlePause);
 		el.addEventListener("ended", this.handleEnded);
 		el.addEventListener("error", this.handleError);
+		el.addEventListener("seeking", this.handleSeeking);
+		el.addEventListener("seeked", this.handleSeeked);
 
-		$volume.subscribe((v) => {
-			if (this.el) this.el.volume = v;
-		});
-
-		$currentSong.listen(() => this.syncCurrentSong());
-		$isPlaying.listen((playing) => {
-			this.syncPlayState(playing);
-			this.updateMediaSessionPlayback(playing);
-		});
-		_seekRequested.listen((t) => {
-			if (t == null || !this.el) return;
-			this.el.currentTime = t;
-			_seekRequested.set(null);
-		});
+		this.teardown.push(
+			$volume.subscribe((v) => {
+				if (this.el) this.el.volume = v;
+			}),
+		);
+		this.teardown.push($currentSong.listen(() => this.syncCurrentSong()));
+		this.teardown.push(
+			$isPlaying.listen((playing) => {
+				this.syncPlayState(playing);
+				this.updateMediaSessionPlayback(playing);
+			}),
+		);
+		this.teardown.push(
+			_seekRequested.listen((t) => {
+				if (t == null || !this.el) return;
+				// Set the guard synchronously — the `seeking` event is async,
+				// and any rAF/timeupdate tick in the gap would otherwise stomp
+				// over our requested position with the pre-seek currentTime.
+				this.isSeeking = true;
+				this.el.currentTime = t;
+				_seekRequested.set(null);
+			}),
+		);
 
 		// Run the high-resolution position loop only when the lyrics view is
 		// actually open — it's the only consumer that needs sub-250ms accuracy.
 		// Everywhere else (progress bar, scrobble, preload) is fine with the
 		// ~4Hz timeupdate signal, so we avoid burning rAF cycles in the common
 		// "lyrics closed" case.
-		$lyricsMode.listen(() => this.syncPositionLoop());
+		this.teardown.push(
+			$lyricsMode.listen(() => this.syncPositionLoop()),
+		);
 
 		this.setupMediaSessionHandlers();
 
@@ -85,13 +149,29 @@ class AudioEngine {
 		this.syncCurrentSong();
 	}
 
+	/**
+	 * Single point of truth for writes to $position during playback. Rejects
+	 * spurious backward jumps (more than 300ms behind the current store value)
+	 * when not seeking — this catches ghost-writer races that sometimes survive
+	 * HMR reloads or can occur if the audio element briefly reports a stale
+	 * currentTime right after a src change.
+	 */
+	private publishPosition(t: number) {
+		if (this.isSeeking) return;
+		const current = $position.get();
+		if (t < current - 0.3 && this.el && !this.el.paused && !this.el.ended) {
+			return;
+		}
+		$position.set(t);
+	}
+
 	private handleTimeUpdate = () => {
 		if (!this.el) return;
 		// Base position updates (~4Hz from timeupdate) are enough for the
 		// progress bar and side-effects. The rAF loop only runs when synced
 		// lyrics need sub-frame accuracy, so we always keep timeupdate wired
 		// as the cheap default.
-		$position.set(this.el.currentTime);
+		this.publishPosition(this.el.currentTime);
 		this.updateMediaSessionPosition();
 		this.maybePreloadNext();
 		this.maybeSubmitScrobble();
@@ -100,10 +180,21 @@ class AudioEngine {
 	private positionTick = () => {
 		this.rafHandle = null;
 		if (!this.el) return;
-		$position.set(this.el.currentTime);
+		this.publishPosition(this.el.currentTime);
 		if (!this.el.paused && !this.el.ended) {
 			this.rafHandle = requestAnimationFrame(this.positionTick);
 		}
+	};
+
+	private handleSeeking = () => {
+		this.isSeeking = true;
+	};
+
+	private handleSeeked = () => {
+		this.isSeeking = false;
+		// After a seek, el.currentTime is authoritative — bypass the monotonic
+		// guard so we honour backward seeks too.
+		if (this.el) $position.set(this.el.currentTime);
 	};
 
 	private syncPositionLoop() {
@@ -185,7 +276,7 @@ class AudioEngine {
 		}
 		if (song.id === this.currentSongId) return;
 		this.currentSongId = song.id;
-		const server = $activeServer.get();
+		const server = $queueServer.get();
 		if (!server) return;
 		const client = clientFor(server);
 		const url = client.streamUrl(song.id);
@@ -222,7 +313,7 @@ class AudioEngine {
 
 	private submitScrobbleNow(songId: string) {
 		this.scrobbleSubmitted = true;
-		const server = $activeServer.get();
+		const server = $queueServer.get();
 		if (!server) return;
 		this.sendScrobble(clientFor(server), songId, true);
 	}
@@ -344,7 +435,7 @@ class AudioEngine {
 		if (current < q.length - 1) nextIdx = current + 1;
 		else if ($repeat.get() === "all") nextIdx = 0;
 		if (nextIdx == null) return null;
-		const server = $activeServer.get();
+		const server = $queueServer.get();
 		if (!server) return null;
 		const client = clientFor(server);
 		return client.streamUrl(q[nextIdx]!.id);
@@ -361,3 +452,18 @@ class AudioEngine {
 }
 
 export const audioEngine = new AudioEngine();
+
+// The audio engine carries a lot of lifecycle state (DOM listeners, nanostore
+// subscriptions, rAF handles, the HTMLAudioElement itself). Even with careful
+// detach/attach plumbing, a Vite HMR replacement can leave the new module's
+// singleton unattached (AppShell's onMount doesn't re-fire for an unrelated
+// module change) — and the old singleton quietly keeps writing stale
+// currentTime into $position, producing the progress-bar-jumping-left-right
+// glitch. Opt out of HMR for this file: any edit triggers a full reload so
+// the app starts from a clean state.
+if (import.meta.hot) {
+	import.meta.hot.decline();
+	import.meta.hot.dispose(() => {
+		(audioEngine as unknown as { detach: () => void }).detach();
+	});
+}

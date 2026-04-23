@@ -34,9 +34,8 @@
 	background-position: center;
 	filter: blur(40px) saturate(160%);
 	transform: scale(1.2);
-	opacity: 0.35;
+	opacity: 0.42;
 	pointer-events: none;
-	mix-blend-mode: screen;
 }
 
 .overlay::before {
@@ -53,18 +52,26 @@
 	pointer-events: none;
 }
 
+/*
+ * Ghost circle in the far top-right — maximum distance from the native
+ * traffic lights on the left, reads as a desktop modal close button.
+ * Tinted by the ambient palette so it feels stitched to the current album
+ * instead of being a floating generic control.
+ */
 .closeBtn {
 	position: absolute;
 	top: var(--space-6);
-	left: var(--space-6);
-	width: 36px;
-	height: 36px;
+	right: var(--space-6);
+	width: 32px;
+	height: 32px;
 	display: grid;
 	place-items: center;
 	border-radius: var(--radius-full);
-	background: var(--surface-glass);
+	background: rgba(0, 0, 0, 0.28);
 	color: var(--text-secondary);
-	border: 1px solid var(--border-subtle);
+	border: 1px solid
+		color-mix(in oklab, var(--ambient-primary) 18%, rgba(255, 255, 255, 0.08));
+	cursor: pointer;
 	transition:
 		background var(--duration-fast) var(--ease-standard),
 		color var(--duration-fast) var(--ease-standard),
@@ -72,9 +79,18 @@
 }
 
 .closeBtn:hover {
-	background: var(--surface-active);
+	background: rgba(0, 0, 0, 0.44);
 	color: var(--text-primary);
-	transform: translateY(2px);
+	transform: scale(1.06);
+}
+
+.closeBtn:active {
+	transform: scale(0.94);
+}
+
+.closeBtn:focus-visible {
+	outline: 2px solid var(--ring-focus);
+	outline-offset: 2px;
 }
 
 .layout {
@@ -141,11 +157,9 @@
 @keyframes panelSlideIn {
 	from {
 		opacity: 0;
-		transform: translateX(24px);
 	}
 	to {
 		opacity: 1;
-		transform: translateX(0);
 	}
 }
 
