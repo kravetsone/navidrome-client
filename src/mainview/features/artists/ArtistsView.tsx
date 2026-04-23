@@ -5,9 +5,44 @@ import { $activeServer } from "../../stores/servers";
 import { artistQuery, artistsQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import { ArtistContextMenu } from "../../components/menus";
-import type { Artist, ServerConfig } from "../../lib/subsonic";
+import type { Artist, ArtistIndex, ServerConfig } from "../../lib/subsonic";
 import type { SubsonicClient } from "../../lib/subsonic/client";
 import styles from "./ArtistsView.module.css";
+
+const LATIN_LETTER = /^[A-Za-z]$/;
+const OTHER_LABEL = "#";
+const OTHER_SLUG = "other";
+
+const sectionSlug = (name: string) =>
+	LATIN_LETTER.test(name) ? name.toUpperCase() : OTHER_SLUG;
+
+function groupSections(raw: ArtistIndex[]): ArtistIndex[] {
+	const buckets = new Map<string, Artist[]>();
+	const other: Artist[] = [];
+	for (const section of raw) {
+		if (LATIN_LETTER.test(section.name)) {
+			const key = section.name.toUpperCase();
+			const bucket = buckets.get(key);
+			if (bucket) bucket.push(...section.artist);
+			else buckets.set(key, [...section.artist]);
+		} else {
+			other.push(...section.artist);
+		}
+	}
+	const result: ArtistIndex[] = [...buckets.entries()]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([name, artist]) => ({
+			name,
+			artist: artist.slice().sort((a, b) => a.name.localeCompare(b.name)),
+		}));
+	if (other.length > 0) {
+		result.push({
+			name: OTHER_LABEL,
+			artist: other.sort((a, b) => a.name.localeCompare(b.name)),
+		});
+	}
+	return result;
+}
 
 export function ArtistsView() {
 	const activeServer = useStore($activeServer);
@@ -32,9 +67,11 @@ function ArtistsBody(props: { server: ServerConfig }) {
 		artistsQuery({ client, serverId: props.server.id }),
 	);
 
-	const handleJump = (letter: string) => (e: Event) => {
+	const sections = createMemo(() => groupSections(query.data ?? []));
+
+	const handleJump = (slug: string) => (e: Event) => {
 		e.preventDefault();
-		document.getElementById(`artist-index-${letter}`)?.scrollIntoView({
+		document.getElementById(`artist-index-${slug}`)?.scrollIntoView({
 			behavior: "smooth",
 			block: "start",
 		});
@@ -43,16 +80,16 @@ function ArtistsBody(props: { server: ServerConfig }) {
 	return (
 		<Show when={!query.isPending} fallback={<div class={styles.empty}>Loading…</div>}>
 			<Show
-				when={(query.data ?? []).length > 0}
+				when={sections().length > 0}
 				fallback={<div class={styles.empty}>No artists yet.</div>}
 			>
 				<div class={styles.body}>
 					<div class={styles.sections}>
-						<For each={query.data!}>
+						<For each={sections()}>
 							{(section) => (
 								<section
 									class={styles.section}
-									id={`artist-index-${section.name}`}
+									id={`artist-index-${sectionSlug(section.name)}`}
 								>
 									<span class={styles.indexLabel}>{section.name}</span>
 									<div class={styles.grid}>
@@ -72,16 +109,19 @@ function ArtistsBody(props: { server: ServerConfig }) {
 					</div>
 
 					<nav class={styles.jumper} aria-label="Jump to letter">
-						<For each={query.data!}>
-							{(section) => (
-								<a
-									href={`#artist-index-${section.name}`}
-									class={styles.jumpLink}
-									onClick={handleJump(section.name)}
-								>
-									{section.name}
-								</a>
-							)}
+						<For each={sections()}>
+							{(section) => {
+								const slug = sectionSlug(section.name);
+								return (
+									<a
+										href={`#artist-index-${slug}`}
+										class={styles.jumpLink}
+										onClick={handleJump(slug)}
+									>
+										{section.name}
+									</a>
+								);
+							}}
 						</For>
 					</nav>
 				</div>
