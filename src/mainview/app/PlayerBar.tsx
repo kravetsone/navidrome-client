@@ -36,6 +36,7 @@ import { $activeServer } from "../stores/servers";
 import { clientFor } from "../lib/queries/useActiveClient";
 import { CoverArt } from "../components/CoverArt";
 import { HeartButton } from "../components/HeartButton";
+import { SleepTimerButton } from "../components/SleepTimerButton";
 import styles from "./PlayerBar.module.css";
 
 function formatTime(seconds: number): string {
@@ -254,6 +255,7 @@ export function PlayerBar() {
 						/>
 					)}
 				</Show>
+				<SleepTimerButton />
 				<button
 					class={styles.btn}
 					aria-label="Queue"

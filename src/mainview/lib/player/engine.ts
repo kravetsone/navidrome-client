@@ -18,6 +18,7 @@ import type { Song } from "../subsonic";
 import type { SubsonicClient } from "../subsonic/client";
 import { $activeServer } from "../../stores/servers";
 import { recordPlay } from "../../stores/history";
+import { notifyTrackEnded } from "../../stores/sleepTimer";
 import { clientFor } from "../queries/useActiveClient";
 
 const PRELOAD_THRESHOLD_SECONDS = 10;
@@ -97,6 +98,9 @@ class AudioEngine {
 		if (song && !this.scrobbleSubmitted) {
 			this.submitScrobbleNow(song.id);
 		}
+		if (song) notifyTrackEnded(song.id);
+		// If the sleep-timer just paused playback, don't auto-advance.
+		if (!$isPlaying.get()) return;
 		if ($repeat.get() === "one") {
 			if (this.el) {
 				this.el.currentTime = 0;
