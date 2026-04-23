@@ -5,6 +5,7 @@ import { CommandPalette } from "../features/search/CommandPalette";
 import { NowPlayingView } from "../features/now-playing/NowPlayingView";
 import { QueuePanel } from "../features/queue/QueuePanel";
 import { audioEngine } from "../lib/player/engine";
+import { installShortcuts } from "../lib/shortcuts";
 import styles from "./AppShell.module.css";
 
 export function AppShell(props: { children: JSX.Element }) {
@@ -12,6 +13,7 @@ export function AppShell(props: { children: JSX.Element }) {
 	onMount(() => {
 		if (audioRef) audioEngine.attach(audioRef);
 	});
+	installShortcuts();
 	return (
 		<div class={styles.shell}>
 			<div class={styles.ambient} />

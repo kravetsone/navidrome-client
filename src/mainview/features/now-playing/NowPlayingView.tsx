@@ -72,19 +72,9 @@ export function NowPlayingView() {
 	createEffect(() => {
 		if (!open()) return;
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				e.preventDefault();
-				closeNowPlaying();
-				return;
-			}
 			if (e.metaKey && e.key === "ArrowDown") {
 				e.preventDefault();
 				closeNowPlaying();
-				return;
-			}
-			if (e.code === "Space" && !(e.target instanceof HTMLInputElement)) {
-				e.preventDefault();
-				togglePlay();
 			}
 		};
 		window.addEventListener("keydown", onKey);
