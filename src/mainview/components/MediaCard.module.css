@@ -13,6 +13,10 @@
 	   rendered yet. */
 	content-visibility: auto;
 	contain-intrinsic-size: auto 220px;
+	/* Also apply full containment while onscreen (content-visibility: auto
+	   drops size-containment once visible). Keeps hover transforms and text
+	   truncation from triggering whole-page style recalc. */
+	contain: content;
 }
 
 @keyframes cardRise {

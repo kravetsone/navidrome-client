@@ -6,6 +6,12 @@
 	box-shadow: var(--shadow-sm), var(--ring-inset);
 	transition: transform var(--duration-base) var(--ease-spring), box-shadow var(--duration-base) var(--ease-standard);
 	flex-shrink: 0;
+	/* Self-contained: fixed aspect ratio + absolute-positioned <img>.
+	   `contain: layout paint` tells the browser that nothing inside this
+	   element can affect layout or paint outside it, so hover transforms
+	   and image swaps don't trigger style recalc on sibling cards. Big
+	   win on dense grids like /artists. */
+	contain: layout paint;
 }
 
 .round {
