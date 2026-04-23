@@ -8,33 +8,47 @@ export interface AmbientPalette {
 	secondary: string;
 }
 
-const cache = new Map<string, Promise<AmbientPalette | null>>();
+const promiseCache = new Map<string, Promise<AmbientPalette | null>>();
+const syncCache = new Map<string, AmbientPalette | null>();
+
+export function getAmbientPaletteSync(
+	url: string,
+): AmbientPalette | null | undefined {
+	return syncCache.get(url);
+}
 
 export async function extractAmbientPalette(
 	url: string,
 ): Promise<AmbientPalette | null> {
-	const cached = cache.get(url);
+	const cached = promiseCache.get(url);
 	if (cached) return cached;
 	const task = (async () => {
 		try {
 			const palette = await Vibrant.from(url).getPalette();
 			const primary =
 				palette.Vibrant?.hex ??
+				palette.LightVibrant?.hex ??
 				palette.DarkVibrant?.hex ??
 				palette.Muted?.hex ??
 				null;
 			const secondary =
-				palette.DarkMuted?.hex ??
 				palette.DarkVibrant?.hex ??
+				palette.DarkMuted?.hex ??
 				palette.Muted?.hex ??
 				primary;
-			if (!primary || !secondary) return null;
-			return { primary, secondary };
+			if (!primary || !secondary) {
+				syncCache.set(url, null);
+				return null;
+			}
+			const result: AmbientPalette = { primary, secondary };
+			syncCache.set(url, result);
+			return result;
 		} catch {
+			syncCache.set(url, null);
 			return null;
 		}
 	})();
-	cache.set(url, task);
+	promiseCache.set(url, task);
 	return task;
 }
 

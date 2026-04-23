@@ -26,8 +26,8 @@
 	--accent-active: #d9a64f;
 	--accent-glow: rgba(232, 184, 106, 0.18);
 
-	--ambient-primary: var(--accent);
-	--ambient-secondary: var(--accent);
+	--ambient-primary: #e8b86a;
+	--ambient-secondary: #e8b86a;
 	--ambient-tertiary: var(--bg-base);
 
 	--status-playing: #7ee787;
@@ -35,4 +35,27 @@
 	--status-warning: #fbbf24;
 
 	--ring-focus: color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+/*
+ * Register ambient palette as typed <color> properties so their values
+ * interpolate smoothly — track changes cross-fade the gradient instead of
+ * snapping. Initial values must be literal (var() is not allowed here).
+ */
+@property --ambient-primary {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #e8b86a;
+}
+
+@property --ambient-secondary {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #e8b86a;
+}
+
+:root {
+	transition:
+		--ambient-primary 520ms cubic-bezier(0.4, 0, 0.2, 1),
+		--ambient-secondary 520ms cubic-bezier(0.4, 0, 0.2, 1);
 }

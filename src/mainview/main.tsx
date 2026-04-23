@@ -11,6 +11,7 @@ import { hydrateHistory } from "./stores/history";
 import { initDiscordPresence } from "./stores/discord-presence";
 import { installNowPlayingBridge } from "./lib/nowPlayingBridge";
 import { installSmartRadio } from "./lib/player/radio";
+import { installAmbientPrewarm } from "./lib/ambient-prewarm";
 import App from "./App";
 
 void electroview;
@@ -25,6 +26,7 @@ async function boot() {
 	initDiscordPresence();
 	installNowPlayingBridge();
 	installSmartRadio();
+	installAmbientPrewarm();
 
 	render(
 		() => (

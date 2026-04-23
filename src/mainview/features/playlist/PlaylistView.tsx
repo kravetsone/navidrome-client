@@ -13,6 +13,7 @@ import { openLightbox } from "../../stores/lightbox";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
+	getAmbientPaletteSync,
 	resetAmbientPalette,
 } from "../../lib/palette";
 import styles from "./PlaylistView.module.css";
@@ -64,8 +65,13 @@ function PlaylistBody(props: { server: ServerConfig; id: string }) {
 	createEffect(() => {
 		const url = paletteUrl();
 		if (!url) return;
+		const sync = getAmbientPaletteSync(url);
+		if (sync) {
+			applyAmbientPalette(sync);
+			return;
+		}
 		extractAmbientPalette(url).then((p) => {
-			if (p) applyAmbientPalette(p);
+			if (p && paletteUrl() === url) applyAmbientPalette(p);
 		});
 	});
 

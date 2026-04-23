@@ -5,6 +5,7 @@ import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
 import { artistQuery, clientFor } from "../../lib/queries";
 import type { ServerConfig } from "../../lib/subsonic";
+import { artistCoverUrl } from "../../lib/artist-cover";
 import { CoverArt } from "../../components/CoverArt";
 import { HeartButton } from "../../components/HeartButton";
 import { MediaCard } from "../../components/MediaCard";
@@ -13,6 +14,7 @@ import { openLightbox } from "../../stores/lightbox";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
+	getAmbientPaletteSync,
 	resetAmbientPalette,
 } from "../../lib/palette";
 import styles from "./ArtistView.module.css";
@@ -34,32 +36,26 @@ function ArtistBody(props: { server: ServerConfig; id: string }) {
 		artistQuery({ client, serverId: props.server.id }, props.id),
 	);
 
-	const heroSrc = createMemo(() => {
-		const a = query.data;
-		if (!a) return undefined;
-		return (
-			a.artistImageUrl ||
-			client.coverArtUrl(a.coverArt || a.id, 360)
-		);
-	});
-
-	const fullHeroSrc = createMemo(() => {
-		const a = query.data;
-		if (!a) return undefined;
-		return a.artistImageUrl || client.coverArtUrl(a.coverArt || a.id);
-	});
-
-	const paletteUrl = createMemo(() => {
-		const a = query.data;
-		if (!a) return undefined;
-		return a.artistImageUrl || client.coverArtUrl(a.coverArt || a.id, 96);
-	});
+	const heroSrc = createMemo(() =>
+		artistCoverUrl(client, query.data, 360),
+	);
+	const fullHeroSrc = createMemo(() =>
+		artistCoverUrl(client, query.data, undefined),
+	);
+	const paletteUrl = createMemo(() =>
+		artistCoverUrl(client, query.data, 96),
+	);
 
 	createEffect(() => {
 		const url = paletteUrl();
 		if (!url) return;
+		const sync = getAmbientPaletteSync(url);
+		if (sync) {
+			applyAmbientPalette(sync);
+			return;
+		}
 		extractAmbientPalette(url).then((p) => {
-			if (p) applyAmbientPalette(p);
+			if (p && paletteUrl() === url) applyAmbientPalette(p);
 		});
 	});
 

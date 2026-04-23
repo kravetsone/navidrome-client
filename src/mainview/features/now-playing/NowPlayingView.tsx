@@ -40,6 +40,7 @@ import { openLightbox } from "../../stores/lightbox";
 import {
 	applyAmbientPalette,
 	extractAmbientPalette,
+	getAmbientPaletteSync,
 	resetAmbientPalette,
 } from "../../lib/palette";
 import { Lyrics } from "./Lyrics";
@@ -90,9 +91,10 @@ export function NowPlayingView() {
 	});
 
 	// While Now Playing is open, tint the UI with colours sampled from the
-	// current cover. On close, restore the ambient palette the underlying view
-	// had set (AlbumView / ArtistView / PlaylistView all set it per-page), so
-	// navigating back doesn't lose its theming.
+	// current cover. The palette is pre-warmed globally on every track change
+	// (see installAmbientPrewarm), so the sync cache usually hits on open —
+	// we apply immediately in the same frame to avoid a default-accent flash.
+	// On close, restore the palette the underlying view had set.
 	createEffect(() => {
 		if (!open()) return;
 		const url = paletteSrc();
@@ -100,10 +102,14 @@ export function NowPlayingView() {
 		const root = document.documentElement;
 		const prevPrimary = root.style.getPropertyValue("--ambient-primary");
 		const prevSecondary = root.style.getPropertyValue("--ambient-secondary");
+		const sync = getAmbientPaletteSync(url);
+		if (sync) applyAmbientPalette(sync);
 		let cancelled = false;
-		extractAmbientPalette(url).then((p) => {
-			if (!cancelled && p) applyAmbientPalette(p);
-		});
+		if (sync === undefined) {
+			extractAmbientPalette(url).then((p) => {
+				if (!cancelled && p) applyAmbientPalette(p);
+			});
+		}
 		onCleanup(() => {
 			cancelled = true;
 			if (prevPrimary) {
@@ -204,8 +210,9 @@ export function NowPlayingView() {
 						class={styles.closeBtn}
 						onClick={closeNowPlaying}
 						aria-label="Close now playing"
+						title="Close"
 					>
-						<ChevronDown size={20} />
+						<ChevronDown size={18} />
 					</button>
 
 					<Show

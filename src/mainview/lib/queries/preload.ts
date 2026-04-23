@@ -1,6 +1,7 @@
 import type { RoutePreloadFunc } from "@solidjs/router";
 import { $activeServer } from "../../stores/servers";
 import type { AlbumListType } from "../subsonic";
+import { extractAmbientPalette } from "../palette";
 import { queryClient } from "./client";
 import { clientFor } from "./useActiveClient";
 import {
@@ -43,10 +44,21 @@ export const preloadAlbums: RoutePreloadFunc = ({ location }) => {
 	void queryClient.prefetchQuery(albumListQuery(ctx, sort, 500, filters));
 };
 
+function preloadPalette(url: string) {
+	void extractAmbientPalette(url);
+	const img = new Image();
+	img.decoding = "async";
+	img.src = url;
+}
+
 export const preloadAlbum: RoutePreloadFunc = ({ params }) => {
 	const ctx = activeCtx();
 	if (!ctx || !params.id) return;
-	void queryClient.prefetchQuery(albumQuery(ctx, params.id));
+	void queryClient.fetchQuery(albumQuery(ctx, params.id)).then((album) => {
+		if (!album?.coverArt) return;
+		const url = ctx.client.coverArtUrl(album.coverArt, 96);
+		if (url) preloadPalette(url);
+	});
 };
 
 export const preloadArtists: RoutePreloadFunc = () => {
@@ -58,7 +70,22 @@ export const preloadArtists: RoutePreloadFunc = () => {
 export const preloadArtist: RoutePreloadFunc = ({ params }) => {
 	const ctx = activeCtx();
 	if (!ctx || !params.id) return;
-	void queryClient.prefetchQuery(artistQuery(ctx, params.id));
+	void queryClient.fetchQuery(artistQuery(ctx, params.id)).then((artist) => {
+		if (!artist) return;
+		if (artist.artistImageUrl) {
+			preloadPalette(artist.artistImageUrl);
+			return;
+		}
+		// Mirror ArtistView's cascade: skip Navidrome's self-pointer coverArt
+		// (same id or "ar-*") and fall back to the first album's cover.
+		const raw = artist.coverArt;
+		const selfRef = !raw || raw === artist.id || raw.startsWith("ar-");
+		const id = selfRef
+			? artist.album?.find((a) => a.coverArt)?.coverArt
+			: raw;
+		const url = id ? ctx.client.coverArtUrl(id, 96) : undefined;
+		if (url) preloadPalette(url);
+	});
 };
 
 export const preloadPlaylists: RoutePreloadFunc = () => {
@@ -70,7 +97,11 @@ export const preloadPlaylists: RoutePreloadFunc = () => {
 export const preloadPlaylist: RoutePreloadFunc = ({ params }) => {
 	const ctx = activeCtx();
 	if (!ctx || !params.id) return;
-	void queryClient.prefetchQuery(playlistQuery(ctx, params.id));
+	void queryClient.fetchQuery(playlistQuery(ctx, params.id)).then((pl) => {
+		if (!pl) return;
+		const url = ctx.client.coverArtUrl(pl.coverArt ?? pl.id, 96);
+		if (url) preloadPalette(url);
+	});
 };
 
 export const preloadFavorites: RoutePreloadFunc = () => {
