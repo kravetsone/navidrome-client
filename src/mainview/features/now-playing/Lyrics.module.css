@@ -135,6 +135,11 @@
 	max-width: 44ch;
 	font-weight: var(--weight-medium, 500);
 	letter-spacing: var(--tracking-tight);
+	/* Isolate each line as its own paint boundary so DOM mutations on one
+	   line don't invalidate the whole track. Crucial here: during the 420ms
+	   track translate the browser would otherwise repaint the entire list
+	   every frame. */
+	contain: layout paint style;
 }
 
 .line:hover {
@@ -142,21 +147,22 @@
 	opacity: 0.85;
 }
 
+/* No per-line filter: blur() — it's tempting for depth but forces the
+   compositor to re-rasterize every visible line every frame while the
+   track is translating, which is the single biggest perf sink here.
+   Opacity + scale + the viewport mask provide enough visual hierarchy. */
 .line[data-state="past"] {
 	opacity: 0.22;
-	filter: blur(0.8px);
 }
 
 .line[data-state="future"] {
 	opacity: 0.5;
-	filter: blur(0.3px);
 }
 
 .line[data-state="active"] {
 	color: var(--text-primary);
 	opacity: 1;
 	transform: scale(1.16) translateY(-1px);
-	filter: blur(0);
 }
 
 .empty {
@@ -199,19 +205,16 @@
 
 .cinematic .line[data-state="past"] {
 	opacity: 0.14;
-	filter: blur(1.2px);
 }
 
 .cinematic .line[data-state="future"] {
 	opacity: 0.26;
-	filter: blur(0.5px);
 }
 
 .cinematic .line[data-state="active"] {
 	color: var(--text-primary);
 	opacity: 1;
 	transform: scale(1.4) translateY(-2px);
-	filter: blur(0);
 	text-shadow: 0 2px 40px rgba(0, 0, 0, 0.55);
 }
 

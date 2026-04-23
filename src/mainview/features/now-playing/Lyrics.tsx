@@ -34,9 +34,15 @@ export function Lyrics(props: LyricsProps) {
 		return lyricsQuery(ctx, songRef);
 	});
 
-	const lyrics = () => query.data as StructuredLyrics | null | undefined;
-	const isSynced = () =>
-		Boolean(lyrics()?.synced && lyrics()?.line?.some((l) => typeof l.start === "number"));
+	const lyrics = createMemo(
+		() => query.data as StructuredLyrics | null | undefined,
+	);
+	const isSynced = createMemo(() => {
+		const l = lyrics();
+		if (!l?.synced) return false;
+		for (const ln of l.line) if (typeof ln.start === "number") return true;
+		return false;
+	});
 
 	// Trigger the active-line highlight slightly before the timestamp is reached.
 	// With the current line transition (~220ms colour, ~280ms scale), the line
@@ -196,13 +202,19 @@ export function Lyrics(props: LyricsProps) {
 					>
 						<For each={lyrics()!.line}>
 							{(line, i) => {
-								const state = () => {
+								// Memoize so only the two lines crossing the boundary
+								// (outgoing active, incoming active) actually touch the
+								// DOM on each activeIndex flip — Solid's equality check
+								// on the memo value prevents the other N-2 lines from
+								// updating their data-state attribute at all.
+								const state = createMemo(() => {
 									if (!isSynced()) return "future" as const;
 									const a = activeIndex();
-									if (i() === a) return "active" as const;
-									if (i() < a) return "past" as const;
+									const idx = i();
+									if (idx === a) return "active" as const;
+									if (idx < a) return "past" as const;
 									return "future" as const;
-								};
+								});
 								return (
 									<p
 										class={styles.line}
