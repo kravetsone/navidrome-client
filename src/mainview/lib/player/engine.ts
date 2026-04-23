@@ -8,7 +8,9 @@ import {
 	$duration,
 	$volume,
 	$repeat,
+	$lyricsMode,
 	_seekRequested,
+	consumeResumePosition,
 	playNext,
 	playPrevious,
 	seek,
@@ -32,6 +34,8 @@ class AudioEngine {
 	private currentSongId: string | null = null;
 	private attached = false;
 	private scrobbleSubmitted = false;
+	private rafHandle: number | null = null;
+	private pendingResumeSeek: number | null = null;
 
 	attach(el: HTMLAudioElement) {
 		if (this.el === el && this.attached) return;
@@ -64,36 +68,87 @@ class AudioEngine {
 			_seekRequested.set(null);
 		});
 
+		// Run the high-resolution position loop only when the lyrics view is
+		// actually open — it's the only consumer that needs sub-250ms accuracy.
+		// Everywhere else (progress bar, scrobble, preload) is fine with the
+		// ~4Hz timeupdate signal, so we avoid burning rAF cycles in the common
+		// "lyrics closed" case.
+		$lyricsMode.listen(() => this.syncPositionLoop());
+
 		this.setupMediaSessionHandlers();
+
+		const resume = consumeResumePosition();
+		if (resume > 0 && $currentSong.get()) {
+			this.pendingResumeSeek = resume;
+		}
+
 		this.syncCurrentSong();
 	}
 
 	private handleTimeUpdate = () => {
 		if (!this.el) return;
+		// Base position updates (~4Hz from timeupdate) are enough for the
+		// progress bar and side-effects. The rAF loop only runs when synced
+		// lyrics need sub-frame accuracy, so we always keep timeupdate wired
+		// as the cheap default.
 		$position.set(this.el.currentTime);
 		this.updateMediaSessionPosition();
 		this.maybePreloadNext();
 		this.maybeSubmitScrobble();
 	};
 
+	private positionTick = () => {
+		this.rafHandle = null;
+		if (!this.el) return;
+		$position.set(this.el.currentTime);
+		if (!this.el.paused && !this.el.ended) {
+			this.rafHandle = requestAnimationFrame(this.positionTick);
+		}
+	};
+
+	private syncPositionLoop() {
+		const shouldRun =
+			this.el != null &&
+			!this.el.paused &&
+			!this.el.ended &&
+			$lyricsMode.get() !== "off";
+		if (shouldRun) {
+			if (this.rafHandle == null) {
+				this.rafHandle = requestAnimationFrame(this.positionTick);
+			}
+		} else if (this.rafHandle != null) {
+			cancelAnimationFrame(this.rafHandle);
+			this.rafHandle = null;
+		}
+	}
+
 	private handleDurationChange = () => {
 		if (!this.el) return;
 		const d = this.el.duration;
 		if (Number.isFinite(d) && d > 0) {
 			$duration.set(d);
+			if (this.pendingResumeSeek != null) {
+				const pos = Math.max(0, Math.min(this.pendingResumeSeek, d - 1));
+				this.pendingResumeSeek = null;
+				this.el.currentTime = pos;
+				$position.set(pos);
+			}
 			this.updateMediaSessionPosition();
 		}
 	};
 
 	private handlePlay = () => {
 		if (!$isPlaying.get()) $isPlaying.set(true);
+		this.syncPositionLoop();
 	};
 
 	private handlePause = () => {
 		if ($isPlaying.get()) $isPlaying.set(false);
+		this.syncPositionLoop();
 	};
 
 	private handleEnded = () => {
+		this.syncPositionLoop();
 		const song = $currentSong.get();
 		if (song && !this.scrobbleSubmitted) {
 			this.submitScrobbleNow(song.id);

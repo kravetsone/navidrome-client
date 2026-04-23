@@ -20,6 +20,28 @@ function asLyricsMode(v: unknown): LyricsMode {
 	return v === "panel" || v === "cinematic" ? v : "off";
 }
 
+function isSong(v: unknown): v is Song {
+	if (!v || typeof v !== "object") return false;
+	const s = v as Song;
+	return typeof s.id === "string" && typeof s.title === "string";
+}
+
+function sanitizeQueue(v: unknown): Song[] {
+	if (!Array.isArray(v)) return [];
+	return v.filter(isSong);
+}
+
+function clampIndex(v: unknown, len: number): number {
+	if (typeof v !== "number" || !Number.isInteger(v)) return -1;
+	if (v < 0 || v >= len) return len > 0 ? 0 : -1;
+	return v;
+}
+
+function sanitizePosition(v: unknown): number {
+	if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return 0;
+	return v;
+}
+
 export const $queue = atom<Song[]>([]);
 export const $currentIndex = atom<number>(-1);
 const shufflePlayed = new Set<string>();
@@ -73,6 +95,30 @@ export const $queueOpen = atom<boolean>(false);
 export const $lyricsMode = atom<LyricsMode>("off");
 
 let wired = false;
+let resumePosition = 0;
+const POSITION_WRITE_INTERVAL_MS = 10_000;
+let positionTimer: ReturnType<typeof setInterval> | null = null;
+
+function writePosition() {
+	persistKv("position", $position.get());
+}
+
+function startPositionTicker() {
+	if (positionTimer != null) return;
+	positionTimer = setInterval(writePosition, POSITION_WRITE_INTERVAL_MS);
+}
+
+function stopPositionTicker() {
+	if (positionTimer == null) return;
+	clearInterval(positionTimer);
+	positionTimer = null;
+}
+
+export function consumeResumePosition(): number {
+	const p = resumePosition;
+	resumePosition = 0;
+	return p;
+}
 
 export function hydratePlayer(): void {
 	const { kv } = getSnapshot();
@@ -81,12 +127,33 @@ export function hydratePlayer(): void {
 	$shuffle.set(Boolean(kv.shuffle));
 	$lyricsMode.set(asLyricsMode(kv.lyricsMode));
 
+	const queue = sanitizeQueue(kv.queue);
+	const index = clampIndex(kv.currentIndex, queue.length);
+	$queue.set(queue);
+	$currentIndex.set(index);
+	const pos = sanitizePosition(kv.position);
+	$position.set(pos);
+	resumePosition = index >= 0 ? pos : 0;
+	// Always restore paused.
+	$isPlaying.set(false);
+
 	if (!wired) {
 		wired = true;
 		$volume.listen((v) => persistKv("volume", v));
 		$repeat.listen((v) => persistKv("repeat", v));
 		$shuffle.listen((v) => persistKv("shuffle", v));
 		$lyricsMode.listen((v) => persistKv("lyricsMode", v));
+		$queue.listen((q) => persistKv("queue", q));
+		$currentIndex.listen((i) => persistKv("currentIndex", i));
+		$isPlaying.listen((playing) => {
+			if (playing) {
+				startPositionTicker();
+			} else {
+				stopPositionTicker();
+				writePosition();
+			}
+		});
+		window.addEventListener("beforeunload", writePosition);
 	}
 }
 
