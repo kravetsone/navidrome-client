@@ -1,10 +1,15 @@
 import type { ElectrobunConfig } from "electrobun";
+import { readFileSync } from "node:fs";
+
+const pkg = JSON.parse(readFileSync("./package.json", "utf8"));
+const version = process.env.APP_VERSION ?? pkg.version;
+const signingEnabled = !!process.env.ELECTROBUN_DEVELOPER_ID;
 
 export default {
 	app: {
-		name: "solid-app",
-		identifier: "solidapp.electrobun.dev",
-		version: "0.0.1",
+		name: "Navidrome Client",
+		identifier: "io.github.kravetsone.navidrome-client",
+		version,
 	},
 	build: {
 		copy: {
@@ -14,6 +19,9 @@ export default {
 		watchIgnore: ["dist/**"],
 		mac: {
 			bundleCEF: false,
+			entitlements: "assets/entitlements.mac.plist",
+			codesign: signingEnabled,
+			notarize: signingEnabled,
 		},
 		linux: {
 			bundleCEF: false,
@@ -21,5 +29,9 @@ export default {
 		win: {
 			bundleCEF: false,
 		},
+	},
+	updates: {
+		provider: "generic",
+		url: "https://github.com/kravetsone/navidrome-client/releases/latest/download",
 	},
 } satisfies ElectrobunConfig;
