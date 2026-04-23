@@ -5,8 +5,10 @@ import {
 	$repeat,
 	$smartRadio,
 	appendRadioTracks,
+	getQueueGeneration,
+	hasUserTouchedQueue,
 } from "../../stores/player";
-import { $activeServer } from "../../stores/servers";
+import { $queueServer } from "../../stores/servers";
 import { $playHistory } from "../../stores/history";
 import type { Song } from "../subsonic";
 import { clientFor } from "../queries/useActiveClient";
@@ -36,7 +38,7 @@ function pickSeedSong(): Song | null {
 }
 
 async function fetchSimilar(seedId: string): Promise<Song[]> {
-	const server = $activeServer.get();
+	const server = $queueServer.get();
 	if (!server) return [];
 	const client = clientFor(server);
 	try {
@@ -63,6 +65,8 @@ async function topUp() {
 	if (inFlight) return;
 	if (!$smartRadio.get()) return;
 	if ($repeat.get() === "all") return;
+	// Don't run on boot-time hydration — only after a real user queue action.
+	if (!hasUserTouchedQueue()) return;
 
 	const q = $queue.get();
 	const idx = $currentIndex.get();
@@ -76,6 +80,7 @@ async function topUp() {
 	// Don't hammer the same dry seed on every tick.
 	if (seed.id === lastSeedId && remaining > 0) return;
 
+	const startGen = getQueueGeneration();
 	inFlight = true;
 	try {
 		const excluded = buildExclusions();
@@ -90,6 +95,10 @@ async function topUp() {
 				(s) => !excluded.has(s.id),
 			);
 		}
+
+		// Queue was replaced while we waited on the network. Drop this batch —
+		// it was computed against a queue that no longer exists.
+		if (getQueueGeneration() !== startGen) return;
 
 		if (candidates.length === 0) {
 			lastSeedId = seed.id;

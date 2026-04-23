@@ -1,6 +1,8 @@
 import { atom, computed } from "nanostores";
 import type { Song } from "../lib/subsonic";
 import { getSnapshot, persistKv } from "../lib/persistence";
+import { $activeServerId, $queueServerId } from "./servers";
+import { pushToast } from "./toast";
 
 export type RepeatMode = "off" | "all" | "one";
 export type LyricsMode = "off" | "panel" | "cinematic";
@@ -99,6 +101,22 @@ export const $lyricsMode = atom<LyricsMode>("off");
 
 let wired = false;
 let resumePosition = 0;
+// Bumps on any queue-replacing action (playSong/playQueue). Hydrate does NOT
+// bump, so smart radio can distinguish boot-time rehydration from a fresh
+// user intent. Also lets async consumers detect "my snapshot is stale".
+let queueGeneration = 0;
+// Flips true on the first user-driven queue action of the session. Used by
+// smart radio to ignore $queue.listen firing during hydration.
+let userTouchedQueue = false;
+
+export function getQueueGeneration(): number {
+	return queueGeneration;
+}
+
+export function hasUserTouchedQueue(): boolean {
+	return userTouchedQueue;
+}
+
 const POSITION_WRITE_INTERVAL_MS = 10_000;
 let positionTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -135,6 +153,16 @@ export function hydratePlayer(): void {
 	const index = clampIndex(kv.currentIndex, queue.length);
 	$queue.set(queue);
 	$currentIndex.set(index);
+	// Backfill queueServerId for upgrades from before cross-server awareness:
+	// if we restored a queue but no queueServerId was persisted, assume it
+	// belongs to the currently active server (that's the only server that
+	// existed when the queue was enqueued under the old code path).
+	if (queue.length > 0 && $queueServerId.get() === null) {
+		$queueServerId.set($activeServerId.get());
+	}
+	if (queue.length === 0) {
+		$queueServerId.set(null);
+	}
 	const pos = sanitizePosition(kv.position);
 	$position.set(pos);
 	resumePosition = index >= 0 ? pos : 0;
@@ -169,9 +197,37 @@ export const $currentSong = computed(
 
 export const $hasQueue = computed($queue, (q) => q.length > 0);
 
+function claimQueueServer() {
+	$queueServerId.set($activeServerId.get());
+}
+
+function canMutateQueue(): boolean {
+	const active = $activeServerId.get();
+	const queueSrv = $queueServerId.get();
+	if (queueSrv === null || active === null) return true;
+	return active === queueSrv;
+}
+
+function warnCrossServerMutation() {
+	pushToast("Switch back to the playing server to modify the queue.", {
+		variant: "info",
+	});
+}
+
 export function playSong(song: Song) {
+	// If the same track is already current, don't wipe the queue — just ensure
+	// playback. Also covers re-clicking the now-playing row.
+	const q = $queue.get();
+	const current = $currentIndex.get();
+	if (current >= 0 && q[current]?.id === song.id) {
+		$isPlaying.set(true);
+		return;
+	}
+	queueGeneration++;
+	userTouchedQueue = true;
 	$queue.set([song]);
 	$queueSources.set({});
+	claimQueueServer();
 	$currentIndex.set(0);
 	$isPlaying.set(true);
 }
@@ -179,9 +235,12 @@ export function playSong(song: Song) {
 export function playQueue(songs: Song[], startIndex = 0) {
 	if (songs.length === 0) return;
 	const idx = Math.max(0, Math.min(startIndex, songs.length - 1));
+	queueGeneration++;
+	userTouchedQueue = true;
 	resetShuffleHistory();
 	$queue.set(songs.slice());
 	$queueSources.set({});
+	claimQueueServer();
 	$currentIndex.set(idx);
 	$isPlaying.set(true);
 }
@@ -202,6 +261,14 @@ export function appendRadioTracks(songs: Song[]) {
 
 export function toggleSmartRadio() {
 	$smartRadio.set(!$smartRadio.get());
+}
+
+export function clearQueue() {
+	$queue.set([]);
+	$queueSources.set({});
+	$currentIndex.set(-1);
+	$isPlaying.set(false);
+	$queueServerId.set(null);
 }
 
 export function playNext() {
@@ -328,8 +395,13 @@ export function addToQueue(songs: Song | Song[]) {
 		playQueue(list, 0);
 		return;
 	}
+	if (!canMutateQueue()) {
+		warnCrossServerMutation();
+		return;
+	}
 	const fresh = dedupAgainst(list, q);
 	if (fresh.length === 0) return;
+	userTouchedQueue = true;
 	$queue.set([...q, ...fresh]);
 }
 
@@ -341,8 +413,13 @@ export function playNextInQueue(songs: Song | Song[]) {
 		playQueue(list, 0);
 		return;
 	}
+	if (!canMutateQueue()) {
+		warnCrossServerMutation();
+		return;
+	}
 	const fresh = dedupAgainst(list, q);
 	if (fresh.length === 0) return;
+	userTouchedQueue = true;
 	const idx = $currentIndex.get();
 	const insertAt = Math.max(0, idx) + 1;
 	$queue.set([...q.slice(0, insertAt), ...fresh, ...q.slice(insertAt)]);
@@ -356,8 +433,13 @@ export function insertIntoQueue(songs: Song | Song[], atIndex: number) {
 		playQueue(list, 0);
 		return;
 	}
+	if (!canMutateQueue()) {
+		warnCrossServerMutation();
+		return;
+	}
 	const fresh = dedupAgainst(list, q);
 	if (fresh.length === 0) return;
+	userTouchedQueue = true;
 	const insertAt = Math.max(0, Math.min(atIndex, q.length));
 	$queue.set([...q.slice(0, insertAt), ...fresh, ...q.slice(insertAt)]);
 	const current = $currentIndex.get();
@@ -369,6 +451,7 @@ export function insertIntoQueue(songs: Song | Song[], atIndex: number) {
 export function jumpTo(index: number) {
 	const q = $queue.get();
 	if (index < 0 || index >= q.length) return;
+	userTouchedQueue = true;
 	$currentIndex.set(index);
 	$isPlaying.set(true);
 }
@@ -402,6 +485,7 @@ export function removeFromQueue(index: number) {
 		if (copy.length === 0) {
 			$currentIndex.set(-1);
 			$isPlaying.set(false);
+			$queueServerId.set(null);
 		} else {
 			$currentIndex.set(Math.min(index, copy.length - 1));
 			$isPlaying.set(true);
