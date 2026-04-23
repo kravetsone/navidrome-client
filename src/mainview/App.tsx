@@ -5,6 +5,7 @@ import { AppShell } from "./app/AppShell";
 import { ServerGuard } from "./app/ServerGuard";
 import { HomeView } from "./features/home/HomeView";
 import { AlbumsView } from "./features/albums/AlbumsView";
+import { AlbumView } from "./features/album/AlbumView";
 import { ArtistsView } from "./features/artists/ArtistsView";
 import { PlaylistsView } from "./features/playlists/PlaylistsView";
 import { ConnectView } from "./features/connect/ConnectView";
@@ -28,6 +29,7 @@ export default function App() {
 		<Router root={Root}>
 			<Route path="/" component={HomeView} />
 			<Route path="/albums" component={AlbumsView} />
+			<Route path="/album/:id" component={AlbumView} />
 			<Route path="/artists" component={ArtistsView} />
 			<Route path="/playlists" component={PlaylistsView} />
 			<Route path="/connect" component={ConnectView} />
