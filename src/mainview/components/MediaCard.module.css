@@ -23,6 +23,15 @@
 	text-align: center;
 }
 
+/* Force the cover to span the card's full width regardless of the
+   round variant's `align-items: center`. Without this the flex item
+   shrinks to content width, and since CoverArt's <img> is absolutely
+   positioned the cover div collapses to 0×0 — covers just don't render. */
+.cover {
+	align-self: stretch;
+	width: 100%;
+}
+
 .text {
 	display: flex;
 	flex-direction: column;
