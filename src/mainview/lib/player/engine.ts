@@ -10,7 +10,12 @@ import {
 	$repeat,
 	_seekRequested,
 	playNext,
+	playPrevious,
+	seek,
+	togglePlay,
 } from "../../stores/player";
+import type { Song } from "../subsonic";
+import type { SubsonicClient } from "../subsonic/client";
 import { $activeServer } from "../../stores/servers";
 import { clientFor } from "../queries/useActiveClient";
 
@@ -49,13 +54,17 @@ class AudioEngine {
 		});
 
 		$currentSong.listen(() => this.syncCurrentSong());
-		$isPlaying.listen((playing) => this.syncPlayState(playing));
+		$isPlaying.listen((playing) => {
+			this.syncPlayState(playing);
+			this.updateMediaSessionPlayback(playing);
+		});
 		_seekRequested.listen((t) => {
 			if (t == null || !this.el) return;
 			this.el.currentTime = t;
 			_seekRequested.set(null);
 		});
 
+		this.setupMediaSessionHandlers();
 		this.syncCurrentSong();
 	}
 
@@ -70,13 +79,17 @@ class AudioEngine {
 	private handleTimeUpdate = () => {
 		if (!this.el) return;
 		$position.set(this.el.currentTime);
+		this.updateMediaSessionPosition();
 		this.maybePreloadNext();
 	};
 
 	private handleDurationChange = () => {
 		if (!this.el) return;
 		const d = this.el.duration;
-		if (Number.isFinite(d) && d > 0) $duration.set(d);
+		if (Number.isFinite(d) && d > 0) {
+			$duration.set(d);
+			this.updateMediaSessionPosition();
+		}
 	};
 
 	private handlePlay = () => {
@@ -128,6 +141,7 @@ class AudioEngine {
 		$duration.set(song.duration ?? 0);
 
 		this.clearPreload();
+		this.updateMediaSessionMetadata(song, client);
 		this.onTrackStart(song);
 
 		if ($isPlaying.get()) {
@@ -135,6 +149,74 @@ class AudioEngine {
 				$isPlaying.set(false);
 			});
 		}
+	}
+
+	private setupMediaSessionHandlers() {
+		if (!("mediaSession" in navigator)) return;
+		const ms = navigator.mediaSession;
+		try {
+			ms.setActionHandler("play", () => {
+				if (!$isPlaying.get()) togglePlay();
+			});
+			ms.setActionHandler("pause", () => {
+				if ($isPlaying.get()) togglePlay();
+			});
+			ms.setActionHandler("previoustrack", () => playPrevious());
+			ms.setActionHandler("nexttrack", () => playNext());
+			ms.setActionHandler("seekto", (e) => {
+				if (typeof e.seekTime === "number") seek(e.seekTime);
+			});
+			ms.setActionHandler("seekbackward", (e) => {
+				const pos = $position.get();
+				seek(Math.max(0, pos - (e.seekOffset ?? 10)));
+			});
+			ms.setActionHandler("seekforward", (e) => {
+				const pos = $position.get();
+				seek(pos + (e.seekOffset ?? 10));
+			});
+		} catch {}
+	}
+
+	private updateMediaSessionMetadata(song: Song, client: SubsonicClient) {
+		if (!("mediaSession" in navigator)) return;
+		const artwork: MediaImage[] = [];
+		const art96 = client.coverArtUrl(song.coverArt, 96);
+		const art256 = client.coverArtUrl(song.coverArt, 256);
+		const art512 = client.coverArtUrl(song.coverArt, 512);
+		if (art96) artwork.push({ src: art96, sizes: "96x96", type: "image/jpeg" });
+		if (art256) artwork.push({ src: art256, sizes: "256x256", type: "image/jpeg" });
+		if (art512) artwork.push({ src: art512, sizes: "512x512", type: "image/jpeg" });
+		try {
+			navigator.mediaSession.metadata = new MediaMetadata({
+				title: song.title,
+				artist: song.artist ?? "",
+				album: song.album ?? "",
+				artwork,
+			});
+		} catch {}
+	}
+
+	private updateMediaSessionPlayback(playing: boolean) {
+		if (!("mediaSession" in navigator)) return;
+		if ($currentSong.get()) {
+			navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+		} else {
+			navigator.mediaSession.playbackState = "none";
+		}
+	}
+
+	private updateMediaSessionPosition() {
+		if (!("mediaSession" in navigator) || !navigator.mediaSession.setPositionState) return;
+		if (!this.el) return;
+		const duration = Number.isFinite(this.el.duration) ? this.el.duration : 0;
+		if (duration <= 0) return;
+		try {
+			navigator.mediaSession.setPositionState({
+				duration,
+				position: Math.min(this.el.currentTime, duration),
+				playbackRate: this.el.playbackRate || 1,
+			});
+		} catch {}
 	}
 
 	private syncPlayState(playing: boolean) {
