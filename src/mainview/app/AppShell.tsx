@@ -7,6 +7,7 @@ import { SearchPill } from "../features/search/SearchPill";
 import { NowPlayingView } from "../features/now-playing/NowPlayingView";
 import { QueuePanel } from "../features/queue/QueuePanel";
 import { LightboxView } from "../features/lightbox/LightboxView";
+import { UpdateBanner } from "../features/updater/UpdateBanner";
 import { ToastViewport } from "../components/Toast";
 import { audioEngine } from "../lib/player/engine";
 import { installShortcuts } from "../lib/shortcuts";
@@ -44,6 +45,7 @@ export function AppShell(props: { children: JSX.Element }) {
 			<NowPlayingView />
 			<QueuePanel />
 			<LightboxView />
+			<UpdateBanner />
 			<ToastViewport />
 			<audio ref={audioRef} style={{ display: "none" }} />
 		</div>

@@ -5,3 +5,7 @@
 @import "./tokens/elevation.css";
 @import "./reset.css";
 @import "./appearance.css";
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
