@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/solid-query";
 import { queryClient } from "./lib/queries";
 import { electroview } from "./lib/electroview";
 import { hydratePersistence } from "./lib/persistence";
+import { attachQueryPersister, restoreQueryCache } from "./lib/queries/persist";
 import { hydrateServers } from "./stores/servers";
 import { hydratePlayer } from "./stores/player";
 import { hydrateHistory } from "./stores/history";
@@ -18,6 +19,8 @@ async function boot() {
 	hydrateServers();
 	hydratePlayer();
 	hydrateHistory();
+	restoreQueryCache(queryClient);
+	attachQueryPersister(queryClient);
 	initDiscordPresence();
 	installNowPlayingBridge();
 
