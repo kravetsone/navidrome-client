@@ -275,9 +275,14 @@ class AudioEngine {
 			return;
 		}
 		if (song.id === this.currentSongId) return;
-		this.currentSongId = song.id;
 		const server = $queueServer.get();
+		// Bail WITHOUT recording currentSongId: if we record it here and the
+		// server-id lands in a later tick, the subsequent $currentSong fire
+		// (same song ref) won't re-trigger and the <audio> stays src-less.
+		// Leaving currentSongId stale means the next fire reprocesses this
+		// song cleanly once $queueServer is set.
 		if (!server) return;
+		this.currentSongId = song.id;
 		const client = clientFor(server);
 		const url = client.streamUrl(song.id);
 		this.el.src = url;

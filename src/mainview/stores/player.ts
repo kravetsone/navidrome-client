@@ -241,9 +241,13 @@ export function playSong(song: Song) {
 	}
 	queueGeneration++;
 	userTouchedQueue = true;
+	// Claim server BEFORE mutating queue: $currentSong is computed([$queue,
+	// $currentIndex]) and its listener (the audio engine) needs a non-null
+	// $queueServer to resolve the stream URL. If we set $queue first, the
+	// listener fires while $queueServer is still null and bails.
+	claimQueueServer();
 	$queue.set([song]);
 	$queueSources.set({});
-	claimQueueServer();
 	$currentIndex.set(0);
 	$isPlaying.set(true);
 }
@@ -254,9 +258,9 @@ export function playQueue(songs: Song[], startIndex = 0) {
 	queueGeneration++;
 	userTouchedQueue = true;
 	resetShuffleHistory();
+	claimQueueServer();
 	$queue.set(songs.slice());
 	$queueSources.set({});
-	claimQueueServer();
 	$currentIndex.set(idx);
 	$isPlaying.set(true);
 }
