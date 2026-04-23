@@ -6,6 +6,13 @@
 	min-width: 0;
 	animation: cardRise 260ms var(--ease-standard) both;
 	animation-delay: calc(var(--i, 0) * 28ms);
+	/* Skip layout/paint/decode for offscreen cards. Essential on pages like
+	   /artists where the grid can hold 900+ nodes — without this each card
+	   decodes its cover eagerly and the page stays janky for seconds. The
+	   intrinsic-size keeps the scrollbar stable for cards we haven't
+	   rendered yet. */
+	content-visibility: auto;
+	contain-intrinsic-size: auto 220px;
 }
 
 @keyframes cardRise {
