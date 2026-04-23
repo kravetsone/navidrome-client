@@ -64,6 +64,20 @@
 	text-overflow: ellipsis;
 }
 
+.trackTitleLink,
+.trackArtistLink {
+	transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.trackTitleLink:hover,
+.trackArtistLink:hover {
+	color: var(--text-primary);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	text-decoration-thickness: 1px;
+	text-decoration-color: var(--text-secondary);
+}
+
 .trackArtist {
 	font-size: var(--text-sm);
 	color: var(--text-secondary);

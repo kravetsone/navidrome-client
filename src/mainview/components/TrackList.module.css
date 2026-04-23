@@ -157,12 +157,29 @@
 }
 
 .trackAlbum,
-.trackArtist {
+.trackArtist,
+.trackAlbumLink,
+.trackArtistLink {
 	color: var(--text-tertiary);
 	font-size: var(--text-sm);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.trackAlbumLink,
+.trackArtistLink {
+	display: inline-block;
+	transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.trackAlbumLink:hover,
+.trackArtistLink:hover {
+	color: var(--text-primary);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	text-decoration-thickness: 1px;
+	text-decoration-color: var(--text-secondary);
 }
 
 .trackDuration {

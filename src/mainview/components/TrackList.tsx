@@ -1,4 +1,5 @@
 import { For, Show, createMemo } from "solid-js";
+import { A } from "@solidjs/router";
 import { useStore } from "@nanostores/solid";
 import { Disc } from "lucide-solid";
 import { Play } from "lucide-solid";
@@ -188,11 +189,37 @@ function TrackRow(props: {
 			</button>
 			<span class={styles.trackTitle}>{props.song.title}</span>
 			<Show when={props.showAlbum}>
-				<span class={styles.trackAlbum}>{props.song.album}</span>
+				<Show
+					when={props.song.albumId && props.song.album}
+					fallback={
+						<span class={styles.trackAlbum}>{props.song.album}</span>
+					}
+				>
+					<A
+						class={styles.trackAlbumLink}
+						href={`/album/${encodeURIComponent(props.song.albumId!)}`}
+						onClick={(e) => e.stopPropagation()}
+					>
+						{props.song.album}
+					</A>
+				</Show>
 			</Show>
-			<span class={styles.trackArtist}>
-				{showArtist() ? props.song.artist : ""}
-			</span>
+			<Show
+				when={showArtist() && props.song.artistId}
+				fallback={
+					<span class={styles.trackArtist}>
+						{showArtist() ? props.song.artist : ""}
+					</span>
+				}
+			>
+				<A
+					class={styles.trackArtistLink}
+					href={`/artist/${encodeURIComponent(props.song.artistId!)}`}
+					onClick={(e) => e.stopPropagation()}
+				>
+					{props.song.artist}
+				</A>
+			</Show>
 			<span class={styles.trackHeart}>
 				<HeartButton
 					kind="song"

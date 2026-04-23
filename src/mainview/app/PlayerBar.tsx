@@ -1,4 +1,5 @@
 import { Show, createMemo } from "solid-js";
+import { A } from "@solidjs/router";
 import { useStore } from "@nanostores/solid";
 import {
 	Play,
@@ -141,9 +142,33 @@ export function PlayerBar() {
 								/>
 							</button>
 							<div class={styles.trackText}>
-								<span class={styles.trackTitle}>{s().title}</span>
+								<Show
+									when={s().albumId}
+									fallback={
+										<span class={styles.trackTitle}>{s().title}</span>
+									}
+								>
+									<A
+										class={`${styles.trackTitle} ${styles.trackTitleLink}`}
+										href={`/album/${encodeURIComponent(s().albumId!)}`}
+									>
+										{s().title}
+									</A>
+								</Show>
 								<Show when={s().artist}>
-									<span class={styles.trackArtist}>{s().artist}</span>
+									<Show
+										when={s().artistId}
+										fallback={
+											<span class={styles.trackArtist}>{s().artist}</span>
+										}
+									>
+										<A
+											class={`${styles.trackArtist} ${styles.trackArtistLink}`}
+											href={`/artist/${encodeURIComponent(s().artistId!)}`}
+										>
+											{s().artist}
+										</A>
+									</Show>
 								</Show>
 							</div>
 						</>

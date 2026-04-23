@@ -2,8 +2,9 @@
 	position: fixed;
 	inset: 0;
 	z-index: 100;
-	display: grid;
-	place-items: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	padding: var(--space-9) var(--space-9) var(--space-10);
 	background: rgba(8, 8, 12, 0.6);
 	backdrop-filter: blur(24px) saturate(140%);
@@ -66,6 +67,23 @@
 	transform: translateY(2px);
 }
 
+.layout {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 100%;
+	max-width: 100%;
+	gap: var(--space-9);
+}
+
+.layout[data-panel="true"] {
+	flex-direction: row;
+	align-items: stretch;
+	justify-content: center;
+	max-width: min(1240px, 96vw);
+	gap: var(--space-10);
+}
+
 .stage {
 	display: flex;
 	flex-direction: column;
@@ -73,6 +91,144 @@
 	gap: var(--space-7);
 	width: min(560px, 92%);
 	max-width: 560px;
+}
+
+.layout[data-panel="true"] .stage {
+	width: min(460px, 42vw);
+	max-width: 460px;
+	flex-shrink: 0;
+}
+
+.layout[data-panel="true"] .coverWrap {
+	width: min(44vh, 400px);
+	height: min(44vh, 400px);
+}
+
+.lyricsPanel {
+	flex: 1;
+	min-width: 0;
+	max-width: 560px;
+	display: flex;
+	flex-direction: column;
+	border-radius: var(--radius-xl);
+	background: var(--surface-glass);
+	backdrop-filter: blur(24px) saturate(160%);
+	-webkit-backdrop-filter: blur(24px) saturate(160%);
+	border: 1px solid var(--border-subtle);
+	overflow: hidden;
+	animation: panelSlideIn var(--duration-base) var(--ease-emphasized);
+	min-height: min(60vh, 520px);
+	max-height: min(70vh, 640px);
+}
+
+@keyframes panelSlideIn {
+	from {
+		opacity: 0;
+		transform: translateX(24px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@media (max-width: 960px) {
+	.layout[data-panel="true"] {
+		flex-direction: column;
+		max-width: min(640px, 92vw);
+	}
+	.layout[data-panel="true"] .stage {
+		width: 100%;
+	}
+	.lyricsPanel {
+		max-width: 100%;
+		width: 100%;
+		min-height: 40vh;
+	}
+}
+
+/* ---------- Cinematic takeover ---------- */
+
+.cinematicStage {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: min(1100px, 94vw);
+	height: 100%;
+	min-height: 0;
+	animation: cinematicFade var(--duration-base) var(--ease-emphasized);
+}
+
+@keyframes cinematicFade {
+	from {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.cinematicFooter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-7);
+	padding: var(--space-6) var(--space-7) var(--space-3);
+	flex-shrink: 0;
+}
+
+.cinematicMeta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-width: 0;
+	flex: 1;
+}
+
+.cinematicTitle {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-size: var(--text-xl);
+	color: var(--text-primary);
+	line-height: var(--leading-tight);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cinematicArtist {
+	font-size: var(--text-sm);
+	color: var(--text-secondary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cinematicControls {
+	display: flex;
+	align-items: center;
+	gap: var(--space-5);
+	flex-shrink: 0;
+}
+
+.overlay[data-lyrics="cinematic"] .cinematicStage {
+	align-self: stretch;
+}
+
+.overlay[data-lyrics="cinematic"] .backdrop {
+	filter: blur(120px) saturate(180%);
+	opacity: 0.45;
+}
+
+.overlay[data-lyrics="cinematic"]::before {
+	background: linear-gradient(
+		180deg,
+		rgba(8, 8, 12, 0.35) 0%,
+		rgba(8, 8, 12, 0.7) 60%,
+		rgba(8, 8, 12, 0.85) 100%
+	);
 }
 
 .coverWrap {
@@ -130,6 +286,17 @@
 .album {
 	font-size: var(--text-sm);
 	color: var(--text-tertiary);
+}
+
+.entityLink {
+	transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.entityLink:hover {
+	color: var(--text-primary);
+	text-decoration: underline;
+	text-underline-offset: 4px;
+	text-decoration-thickness: 1px;
 }
 
 .progress {
