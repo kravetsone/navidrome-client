@@ -30,10 +30,6 @@ class AudioEngine {
 	private currentSongId: string | null = null;
 	private attached = false;
 	private scrobbleSubmitted = false;
-	private onEnded: (song: ReturnType<typeof $currentSong.get>) => void = () => {};
-	private onTrackStart: (
-		song: ReturnType<typeof $currentSong.get>,
-	) => void = () => {};
 
 	attach(el: HTMLAudioElement) {
 		if (this.el === el && this.attached) return;
@@ -42,7 +38,6 @@ class AudioEngine {
 
 		el.preload = "auto";
 		el.volume = $volume.get();
-		el.crossOrigin = "anonymous";
 
 		el.addEventListener("timeupdate", this.handleTimeUpdate);
 		el.addEventListener("durationchange", this.handleDurationChange);
@@ -69,14 +64,6 @@ class AudioEngine {
 
 		this.setupMediaSessionHandlers();
 		this.syncCurrentSong();
-	}
-
-	onEndedHook(fn: (song: ReturnType<typeof $currentSong.get>) => void) {
-		this.onEnded = fn;
-	}
-
-	onTrackStartHook(fn: (song: ReturnType<typeof $currentSong.get>) => void) {
-		this.onTrackStart = fn;
 	}
 
 	private handleTimeUpdate = () => {
@@ -109,10 +96,10 @@ class AudioEngine {
 		if (song && !this.scrobbleSubmitted) {
 			this.submitScrobbleNow(song.id);
 		}
-		this.onEnded(song);
 		if ($repeat.get() === "one") {
 			if (this.el) {
 				this.el.currentTime = 0;
+				this.scrobbleSubmitted = false;
 				this.el.play().catch(() => {});
 			}
 			return;
@@ -151,7 +138,6 @@ class AudioEngine {
 		this.scrobbleSubmitted = false;
 		this.sendScrobble(client, song.id, false);
 		this.updateMediaSessionMetadata(song, client);
-		this.onTrackStart(song);
 
 		if ($isPlaying.get()) {
 			this.el.play().catch(() => {
