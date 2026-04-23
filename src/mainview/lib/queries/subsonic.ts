@@ -25,10 +25,18 @@ export function albumListQuery(
 	{ client, serverId }: ClientCtx,
 	type: AlbumListType,
 	size = 30,
+	filters?: { genre?: string; fromYear?: number; toYear?: number },
 ) {
 	return queryOptions({
-		queryKey: qk.albumList(serverId, type, size),
-		queryFn: () => client.getAlbumList2({ type, size }),
+		queryKey: qk.albumList(serverId, type, size, filters),
+		queryFn: () =>
+			client.getAlbumList2({
+				type,
+				size,
+				genre: filters?.genre,
+				fromYear: filters?.fromYear,
+				toYear: filters?.toYear,
+			}),
 		staleTime: FIVE_MIN,
 	});
 }

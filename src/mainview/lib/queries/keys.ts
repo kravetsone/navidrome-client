@@ -8,8 +8,21 @@ export const qk = {
 	ping: (serverId: string) =>
 		[...qk.server(serverId), "ping"] as const,
 
-	albumList: (serverId: string, type: AlbumListType, size?: number) =>
-		[...qk.server(serverId), "albumList", type, size ?? null] as const,
+	albumList: (
+		serverId: string,
+		type: AlbumListType,
+		size?: number,
+		filters?: { genre?: string; fromYear?: number; toYear?: number },
+	) =>
+		[
+			...qk.server(serverId),
+			"albumList",
+			type,
+			size ?? null,
+			filters?.genre ?? null,
+			filters?.fromYear ?? null,
+			filters?.toYear ?? null,
+		] as const,
 
 	album: (serverId: string, id: string) =>
 		[...qk.server(serverId), "album", id] as const,
