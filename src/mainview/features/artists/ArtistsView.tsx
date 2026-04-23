@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
@@ -135,63 +135,53 @@ function ArtistCard(props: {
 	client: SubsonicClient;
 	artist: Artist;
 }) {
-	const [visible, setVisible] = createSignal(false);
-	let cardRef: HTMLDivElement | undefined;
-
-	onMount(() => {
-		if (!cardRef) return;
-		const io = new IntersectionObserver(
-			(entries) => {
-				if (entries.some((e) => e.isIntersecting)) {
-					setVisible(true);
-					io.disconnect();
-				}
-			},
-			{ rootMargin: "200px" },
-		);
-		io.observe(cardRef);
-		onCleanup(() => io.disconnect());
-	});
-
-	const detail = createQuery(() => ({
-		...artistQuery(
+	const detail = createQuery(() =>
+		artistQuery(
 			{ client: props.client, serverId: props.server.id },
 			props.artist.id,
 		),
-		enabled: visible(),
-	}));
+	);
+
+	const albumFallback = createMemo(() => {
+		const album = detail.data?.album?.find((a) => a.coverArt);
+		if (!album?.coverArt) return undefined;
+		return props.client.coverArtUrl(album.coverArt, 240);
+	});
 
 	const coverSrc = createMemo(() => {
 		const full = detail.data;
 		const imgUrl = full?.artistImageUrl || props.artist.artistImageUrl;
 		if (imgUrl) return imgUrl;
-		const coverId =
-			full?.coverArt || props.artist.coverArt || props.artist.id;
-		return props.client.coverArtUrl(coverId, 240);
+		const coverId = full?.coverArt || props.artist.coverArt;
+		if (coverId) return props.client.coverArtUrl(coverId, 240);
+		// Prefer the album cover directly when we have it — skips a guaranteed
+		// 404 on getCoverArt(artistId) for Navidrome instances without a
+		// metadata agent (Last.fm/Spotify).
+		const album = albumFallback();
+		if (album) return album;
+		return props.client.coverArtUrl(props.artist.id, 240);
 	});
 
 	const coverFallbackSrc = createMemo(() => {
-		const firstAlbum = detail.data?.album?.[0];
-		if (!firstAlbum?.coverArt) return undefined;
-		return props.client.coverArtUrl(firstAlbum.coverArt, 240);
+		// Only used when coverSrc itself fails; same album lookup, harmless
+		// duplication since SubsonicClient caches identical URLs.
+		return albumFallback();
 	});
 
 	return (
-		<div ref={cardRef}>
-			<ArtistContextMenu artist={props.artist}>
-				<MediaCard
-					href={`/artist/${encodeURIComponent(props.artist.id)}`}
-					title={props.artist.name}
-					subtitle={
-						props.artist.albumCount != null
-							? `${props.artist.albumCount} album${props.artist.albumCount === 1 ? "" : "s"}`
-							: undefined
-					}
-					coverSrc={coverSrc()}
-					coverFallbackSrc={coverFallbackSrc()}
-					round
-				/>
-			</ArtistContextMenu>
-		</div>
+		<ArtistContextMenu artist={props.artist}>
+			<MediaCard
+				href={`/artist/${encodeURIComponent(props.artist.id)}`}
+				title={props.artist.name}
+				subtitle={
+					props.artist.albumCount != null
+						? `${props.artist.albumCount} album${props.artist.albumCount === 1 ? "" : "s"}`
+						: undefined
+				}
+				coverSrc={coverSrc()}
+				coverFallbackSrc={coverFallbackSrc()}
+				round
+			/>
+		</ArtistContextMenu>
 	);
 }
