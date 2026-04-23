@@ -6,6 +6,7 @@ import { $activeServer } from "../../stores/servers";
 import { artistQuery, clientFor } from "../../lib/queries";
 import type { ServerConfig } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
+import { HeartButton } from "../../components/HeartButton";
 import { MediaCard } from "../../components/MediaCard";
 import {
 	applyAmbientPalette,
@@ -85,6 +86,13 @@ function ArtistBody(props: { server: ServerConfig; id: string }) {
 											{albums().length === 1 ? "" : "s"}
 										</p>
 									</Show>
+									<div class={styles.actions}>
+										<HeartButton
+											kind="artist"
+											id={artist().id}
+											starred={Boolean(artist().starred)}
+										/>
+									</div>
 								</div>
 							</section>
 

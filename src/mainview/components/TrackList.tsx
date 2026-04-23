@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/solid";
 import { Play } from "lucide-solid";
 import type { Song } from "../lib/subsonic";
 import { $currentSong, $isPlaying } from "../stores/player";
+import { HeartButton } from "./HeartButton";
 import styles from "./TrackList.module.css";
 
 function formatTrackDuration(seconds?: number): string {
@@ -35,6 +36,7 @@ export function TrackList(props: TrackListProps) {
 					<span>Album</span>
 				</Show>
 				<span>Artist</span>
+				<span class={styles.colHeart} aria-hidden="true" />
 				<span class={styles.colDur}>Duration</span>
 			</header>
 			<ol class={styles.list}>
@@ -83,6 +85,15 @@ export function TrackList(props: TrackListProps) {
 								</Show>
 								<span class={styles.trackArtist}>
 									{showArtist ? song.artist : ""}
+								</span>
+								<span class={styles.trackHeart}>
+									<HeartButton
+										kind="song"
+										id={song.id}
+										starred={Boolean(song.starred)}
+										compact
+										size={14}
+									/>
 								</span>
 								<span class={styles.trackDuration}>
 									{formatTrackDuration(song.duration)}

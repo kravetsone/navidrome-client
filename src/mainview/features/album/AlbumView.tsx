@@ -7,6 +7,7 @@ import { $activeServer } from "../../stores/servers";
 import { albumQuery, clientFor } from "../../lib/queries";
 import type { ServerConfig, Song } from "../../lib/subsonic";
 import { CoverArt } from "../../components/CoverArt";
+import { HeartButton } from "../../components/HeartButton";
 import { TrackList } from "../../components/TrackList";
 import { playQueue, toggleShuffle, $shuffle } from "../../stores/player";
 import {
@@ -140,6 +141,11 @@ function AlbumBody(props: { server: ServerConfig; id: string }) {
 											<Shuffle size={16} />
 											<span>Shuffle</span>
 										</button>
+										<HeartButton
+											kind="album"
+											id={album().id}
+											starred={Boolean(album().starred)}
+										/>
 									</div>
 								</div>
 							</section>

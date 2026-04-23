@@ -6,7 +6,7 @@
 
 .head {
 	display: grid;
-	grid-template-columns: 48px 1fr 1fr 72px;
+	grid-template-columns: 48px 1fr 1fr 32px 72px;
 	gap: var(--space-5);
 	padding: 0 var(--space-5) var(--space-3);
 	font-size: var(--text-xs);
@@ -19,7 +19,11 @@
 
 .tracks[data-show-album="true"] .head,
 .tracks[data-show-album="true"] .track {
-	grid-template-columns: 48px 2fr 1.4fr 1fr 72px;
+	grid-template-columns: 48px 2fr 1.4fr 1fr 32px 72px;
+}
+
+.colHeart {
+	width: 32px;
 }
 
 .colNum {
@@ -40,13 +44,26 @@
 
 .track {
 	display: grid;
-	grid-template-columns: 48px 1fr 1fr 72px;
+	grid-template-columns: 48px 1fr 1fr 32px 72px;
 	gap: var(--space-5);
 	align-items: center;
 	padding: var(--space-3) var(--space-5);
 	border-radius: var(--radius-md);
 	transition: background var(--duration-fast) var(--ease-standard);
 	cursor: pointer;
+}
+
+.trackHeart {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.track:hover .trackHeart,
+.trackHeart:has([data-active="true"]) {
+	opacity: 1;
 }
 
 .track:hover {

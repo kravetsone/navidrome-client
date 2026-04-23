@@ -220,6 +220,35 @@ export class SubsonicClient {
 		return resp.playlist;
 	}
 
+	async star(params: {
+		id?: string;
+		albumId?: string;
+		artistId?: string;
+	}): Promise<void> {
+		await this.call("star", {
+			id: params.id ?? null,
+			albumId: params.albumId ?? null,
+			artistId: params.artistId ?? null,
+		});
+	}
+
+	async unstar(params: {
+		id?: string;
+		albumId?: string;
+		artistId?: string;
+	}): Promise<void> {
+		await this.call("unstar", {
+			id: params.id ?? null,
+			albumId: params.albumId ?? null,
+			artistId: params.artistId ?? null,
+		});
+	}
+
+	async setRating(id: string, rating: number): Promise<void> {
+		const r = Math.max(0, Math.min(5, Math.round(rating)));
+		await this.call("setRating", { id, rating: r });
+	}
+
 	async search3(options: {
 		query: string;
 		artistCount?: number;

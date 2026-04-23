@@ -1,0 +1,45 @@
+.heart {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-3);
+	color: var(--text-tertiary);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	transition:
+		color var(--duration-fast) var(--ease-standard),
+		background var(--duration-fast) var(--ease-standard),
+		transform var(--duration-fast) var(--ease-standard);
+	font: inherit;
+}
+
+.heart:hover {
+	color: var(--text-primary);
+	background: var(--surface-hover);
+}
+
+.heart[data-active="true"] {
+	color: var(--accent);
+}
+
+.heart[data-active="true"]:hover {
+	color: var(--accent-hover);
+}
+
+.heart:active {
+	transform: scale(0.92);
+}
+
+.heart[data-compact="true"] {
+	padding: 0;
+	width: 32px;
+	height: 32px;
+}
+
+.heart:focus-visible {
+	outline: 2px solid var(--ring-focus);
+	outline-offset: 2px;
+}
