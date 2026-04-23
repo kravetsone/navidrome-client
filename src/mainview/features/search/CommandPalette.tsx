@@ -15,9 +15,9 @@ import { useStore } from "@nanostores/solid";
 import { createQuery } from "@tanstack/solid-query";
 import { Search } from "lucide-solid";
 import { $activeServer } from "../../stores/servers";
-import { SubsonicClient } from "../../lib/subsonic/client";
+import type { SubsonicClient } from "../../lib/subsonic/client";
 import type { SearchResult } from "../../lib/subsonic";
-import { searchQuery } from "../../lib/queries";
+import { clientFor, searchQuery } from "../../lib/queries";
 import { CoverArt } from "../../components/CoverArt";
 import styles from "./CommandPalette.module.css";
 
@@ -82,7 +82,7 @@ export function CommandPalette() {
 	const ctx = createMemo(() => {
 		const server = activeServer();
 		if (!server) return null;
-		return { client: new SubsonicClient(server), serverId: server.id };
+		return { client: clientFor(server), serverId: server.id };
 	});
 
 	let inputRef!: HTMLInputElement;

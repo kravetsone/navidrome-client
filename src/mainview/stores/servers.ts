@@ -50,6 +50,7 @@ export function updateServer(id: string, patch: Partial<ServerConfig>) {
 export function removeServer(id: string) {
 	const next = $servers.get().filter((s) => s.id !== id);
 	$servers.set(next);
+	void import("../lib/queries/useActiveClient").then((m) => m.invalidateClient(id));
 	if ($activeServerId.get() === id) {
 		$activeServerId.set(next[0]?.id ?? null);
 	}

@@ -3,9 +3,8 @@ import { useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
-import { SubsonicClient } from "../../lib/subsonic/client";
 import type { AlbumListType } from "../../lib/subsonic";
-import { albumListQuery } from "../../lib/queries";
+import { albumListQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import styles from "./AlbumsView.module.css";
 
@@ -55,7 +54,7 @@ export function AlbumsView() {
 }
 
 function AlbumsGrid(props: { server: ReturnType<typeof $activeServer.get> & {}; sort: SortKey }) {
-	const client = new SubsonicClient(props.server);
+	const client = clientFor(props.server);
 	const query = createQuery(() =>
 		albumListQuery(
 			{ client, serverId: props.server.id },

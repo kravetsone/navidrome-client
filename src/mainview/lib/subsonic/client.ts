@@ -44,9 +44,11 @@ function stddev(xs: number[]): number {
 }
 
 export class SubsonicClient {
+	private stableAuth?: { salt: string; token: string };
+
 	constructor(private readonly config: Pick<ServerConfig, "url" | "username" | "authMode" | "secret">) {}
 
-	private authParams(): URLSearchParams {
+	private authParams(opts: { stable?: boolean } = {}): URLSearchParams {
 		const p = new URLSearchParams({
 			v: API_VERSION,
 			c: `${CLIENT_NAME}/${CLIENT_VERSION}`,
@@ -54,19 +56,33 @@ export class SubsonicClient {
 		});
 		if (this.config.authMode === "apiKey") {
 			p.set("apiKey", this.config.secret);
-		} else {
-			const salt = randomSalt();
-			const token = md5(this.config.secret + salt);
-			p.set("u", this.config.username);
-			p.set("t", token);
-			p.set("s", salt);
+			return p;
 		}
+		let salt: string;
+		let token: string;
+		if (opts.stable) {
+			if (!this.stableAuth) {
+				const s = randomSalt();
+				this.stableAuth = { salt: s, token: md5(this.config.secret + s) };
+			}
+			({ salt, token } = this.stableAuth);
+		} else {
+			salt = randomSalt();
+			token = md5(this.config.secret + salt);
+		}
+		p.set("u", this.config.username);
+		p.set("t", token);
+		p.set("s", salt);
 		return p;
 	}
 
-	buildUrl(method: string, query: Record<string, QueryValue> = {}): string {
+	buildUrl(
+		method: string,
+		query: Record<string, QueryValue> = {},
+		opts: { stable?: boolean } = {},
+	): string {
 		const base = `${this.config.url.replace(/\/$/, "")}/rest/${method}`;
-		const params = this.authParams();
+		const params = this.authParams({ stable: opts.stable });
 		for (const [k, v] of Object.entries(query)) {
 			if (v === null || v === undefined) continue;
 			params.set(k, String(v));
@@ -384,14 +400,18 @@ export class SubsonicClient {
 
 	coverArtUrl(id: string | undefined, size?: number): string | undefined {
 		if (!id) return undefined;
-		return this.buildUrl("getCoverArt", size ? { id, size } : { id });
+		return this.buildUrl(
+			"getCoverArt",
+			size ? { id, size } : { id },
+			{ stable: true },
+		);
 	}
 
 	streamUrl(id: string, options: { maxBitRate?: number; format?: string } = {}): string {
-		return this.buildUrl("stream", {
-			id,
-			maxBitRate: options.maxBitRate,
-			format: options.format,
-		});
+		return this.buildUrl(
+			"stream",
+			{ id, maxBitRate: options.maxBitRate, format: options.format },
+			{ stable: true },
+		);
 	}
 }

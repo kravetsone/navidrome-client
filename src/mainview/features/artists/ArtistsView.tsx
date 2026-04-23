@@ -2,8 +2,7 @@ import { For, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
-import { SubsonicClient } from "../../lib/subsonic/client";
-import { artistsQuery } from "../../lib/queries";
+import { artistsQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import type { ServerConfig } from "../../lib/subsonic";
 import styles from "./ArtistsView.module.css";
@@ -26,7 +25,7 @@ export function ArtistsView() {
 }
 
 function ArtistsBody(props: { server: ServerConfig }) {
-	const client = new SubsonicClient(props.server);
+	const client = clientFor(props.server);
 	const query = createQuery(() =>
 		artistsQuery({ client, serverId: props.server.id }),
 	);

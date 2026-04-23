@@ -2,8 +2,7 @@ import { For, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
-import { SubsonicClient } from "../../lib/subsonic/client";
-import { playlistsQuery } from "../../lib/queries";
+import { clientFor, playlistsQuery } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import type { ServerConfig } from "../../lib/subsonic";
 import styles from "./PlaylistsView.module.css";
@@ -34,7 +33,7 @@ export function PlaylistsView() {
 }
 
 function PlaylistsGrid(props: { server: ServerConfig }) {
-	const client = new SubsonicClient(props.server);
+	const client = clientFor(props.server);
 	const query = createQuery(() =>
 		playlistsQuery({ client, serverId: props.server.id }),
 	);

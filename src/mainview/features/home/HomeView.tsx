@@ -2,9 +2,8 @@ import { For, Index, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
 import { $activeServer } from "../../stores/servers";
-import { SubsonicClient } from "../../lib/subsonic/client";
 import type { Album, AlbumListType, ServerConfig } from "../../lib/subsonic";
-import { albumListQuery } from "../../lib/queries";
+import { albumListQuery, clientFor } from "../../lib/queries";
 import { MediaCard } from "../../components/MediaCard";
 import { SectionRail } from "../../components/SectionRail";
 import styles from "./HomeView.module.css";
@@ -76,7 +75,7 @@ function AlbumRail(props: {
 }) {
 	const query = createQuery(() =>
 		albumListQuery(
-			{ client: new SubsonicClient(props.server), serverId: props.server.id },
+			{ client: clientFor(props.server), serverId: props.server.id },
 			props.type,
 			20,
 		),
@@ -99,7 +98,7 @@ function AlbumRail(props: {
 }
 
 function AlbumCell(props: { album: Album; server: ServerConfig }) {
-	const client = new SubsonicClient(props.server);
+	const client = clientFor(props.server);
 	return (
 		<MediaCard
 			href={`/album/${encodeURIComponent(props.album.id)}`}
