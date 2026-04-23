@@ -17,7 +17,7 @@ interface Rail {
 }
 
 const RAILS: Rail[] = [
-	{ type: "recent", eyebrow: "Lately", title: "Recently added", href: "/albums?sort=recent" },
+	{ type: "newest", eyebrow: "Lately", title: "Recently added", href: "/albums?sort=newest" },
 	{ type: "frequent", eyebrow: "You love", title: "Most played", href: "/albums?sort=frequent" },
 	{ type: "starred", eyebrow: "Favorites", title: "Starred albums", href: "/albums?sort=starred" },
 	{ type: "random", eyebrow: "Rediscover", title: "Random picks", href: "/albums?sort=random" },

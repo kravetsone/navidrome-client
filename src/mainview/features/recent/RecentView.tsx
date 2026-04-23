@@ -67,7 +67,7 @@ function RecentAlbumsSection(props: { server: ServerConfig }) {
 	const query = createQuery(() =>
 		albumListQuery(
 			{ client, serverId: props.server.id },
-			"recent",
+			"newest",
 			30,
 		),
 	);

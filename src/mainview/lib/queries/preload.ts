@@ -23,7 +23,7 @@ function activeCtx(): Ctx | null {
 	return { client: clientFor(server), serverId: server.id };
 }
 
-const HOME_RAILS: AlbumListType[] = ["recent", "frequent", "starred", "random"];
+const HOME_RAILS: AlbumListType[] = ["newest", "frequent", "starred", "random"];
 
 export const preloadHome: RoutePreloadFunc = () => {
 	const ctx = activeCtx();
@@ -36,7 +36,7 @@ export const preloadHome: RoutePreloadFunc = () => {
 export const preloadAlbums: RoutePreloadFunc = ({ location }) => {
 	const ctx = activeCtx();
 	if (!ctx) return;
-	const sort = (location.query.sort as AlbumListType | undefined) ?? "recent";
+	const sort = (location.query.sort as AlbumListType | undefined) ?? "newest";
 	const genre = location.query.genre as string | undefined;
 	const fromYear = Number(location.query.fromYear) || undefined;
 	const toYear = Number(location.query.toYear) || undefined;
@@ -116,5 +116,5 @@ export const preloadFavorites: RoutePreloadFunc = () => {
 export const preloadRecent: RoutePreloadFunc = () => {
 	const ctx = activeCtx();
 	if (!ctx) return;
-	void queryClient.prefetchQuery(albumListQuery(ctx, "recent", 30));
+	void queryClient.prefetchQuery(albumListQuery(ctx, "newest", 30));
 };

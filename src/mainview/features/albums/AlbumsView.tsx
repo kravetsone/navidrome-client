@@ -15,10 +15,11 @@ import { MediaCard } from "../../components/MediaCard";
 import { AlbumContextMenu } from "../../components/menus";
 import styles from "./AlbumsView.module.css";
 
-type SortKey = "recent" | "newest" | "frequent" | "alphabeticalByName" | "starred" | "random";
+type SortKey = "newest" | "recent" | "frequent" | "alphabeticalByName" | "starred" | "random";
 
 const SORTS: { key: SortKey; label: string }[] = [
-	{ key: "recent", label: "Recently added" },
+	{ key: "newest", label: "Recently added" },
+	{ key: "recent", label: "Recently played" },
 	{ key: "frequent", label: "Most played" },
 	{ key: "alphabeticalByName", label: "A–Z" },
 	{ key: "starred", label: "Starred" },
@@ -34,7 +35,7 @@ interface Filters {
 export function AlbumsView() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const activeServer = useStore($activeServer);
-	const sort = () => (searchParams.sort?.toString() as SortKey) || "recent";
+	const sort = () => (searchParams.sort?.toString() as SortKey) || "newest";
 	const filters = createMemo<Filters>(() => {
 		const genre = searchParams.genre?.toString();
 		const from = Number(searchParams.fromYear);
