@@ -27,6 +27,7 @@ export const $repeat = atom<RepeatMode>("off");
 export const $shuffle = atom<boolean>(false);
 export const $history = atom<Song[]>([]);
 export const $nowPlayingOpen = atom<boolean>(false);
+export const $queueOpen = atom<boolean>(false);
 
 export const $currentSong = computed(
 	[$queue, $currentIndex],
@@ -138,6 +139,14 @@ export function openNowPlaying() {
 
 export function closeNowPlaying() {
 	$nowPlayingOpen.set(false);
+}
+
+export function toggleQueue() {
+	$queueOpen.set(!$queueOpen.get());
+}
+
+export function closeQueue() {
+	$queueOpen.set(false);
 }
 
 export function addToQueue(songs: Song | Song[]) {

@@ -28,6 +28,8 @@ import {
 	toggleShuffle,
 	cycleRepeat,
 	openNowPlaying,
+	toggleQueue,
+	$queueOpen,
 } from "../stores/player";
 import { $activeServer } from "../stores/servers";
 import { clientFor } from "../lib/queries/useActiveClient";
@@ -52,6 +54,7 @@ export function PlayerBar() {
 	const repeat = useStore($repeat);
 	const shuffle = useStore($shuffle);
 	const activeServer = useStore($activeServer);
+	const queueOpen = useStore($queueOpen);
 
 	const coverSrc = createMemo(() => {
 		const s = song();
@@ -226,7 +229,12 @@ export function PlayerBar() {
 						/>
 					)}
 				</Show>
-				<button class={styles.btn} aria-label="Queue">
+				<button
+					class={styles.btn}
+					aria-label="Queue"
+					data-active={queueOpen()}
+					onClick={toggleQueue}
+				>
 					<ListMusic />
 				</button>
 				<div class={styles.volume}>
