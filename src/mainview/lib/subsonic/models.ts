@@ -38,6 +38,7 @@ export interface Song {
 	coverArt?: string;
 	duration?: number;
 	track?: number;
+	discNumber?: number;
 	year?: number;
 	genre?: string;
 	size?: number;

@@ -154,6 +154,7 @@ function AlbumBody(props: { server: ServerConfig; id: string }) {
 								<TrackList
 									songs={songs()}
 									omitArtist={allArtist}
+									groupByDisc
 									onPlay={(i) => playQueue(songs(), i)}
 								/>
 							</Show>
