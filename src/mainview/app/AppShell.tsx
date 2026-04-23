@@ -2,6 +2,7 @@ import { onMount, type JSX } from "solid-js";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "./PlayerBar";
 import { CommandPalette } from "../features/search/CommandPalette";
+import { NowPlayingView } from "../features/now-playing/NowPlayingView";
 import { audioEngine } from "../lib/player/engine";
 import styles from "./AppShell.module.css";
 
@@ -24,6 +25,7 @@ export function AppShell(props: { children: JSX.Element }) {
 				<PlayerBar />
 			</footer>
 			<CommandPalette />
+			<NowPlayingView />
 			<audio ref={audioRef} style={{ display: "none" }} />
 		</div>
 	);
