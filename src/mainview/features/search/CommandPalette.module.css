@@ -172,6 +172,50 @@
 	color: var(--text-muted);
 }
 
+.seeAll {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	width: 100%;
+	padding: var(--space-4) var(--space-6);
+	background: transparent;
+	border: none;
+	border-top: 1px solid var(--border-subtle);
+	color: var(--text-secondary);
+	font-family: var(--font-sans);
+	font-size: var(--text-sm);
+	text-align: left;
+	cursor: pointer;
+	transition:
+		background var(--duration-fast) var(--ease-standard),
+		color var(--duration-fast) var(--ease-standard);
+}
+
+.seeAll:hover {
+	background: var(--surface-hover);
+	color: var(--text-primary);
+}
+
+.seeAll svg {
+	width: 14px;
+	height: 14px;
+	color: var(--text-tertiary);
+	flex-shrink: 0;
+}
+
+.seeAll:hover svg {
+	color: var(--accent);
+}
+
+.seeAllText {
+	flex: 1;
+}
+
+.seeAllQuery {
+	color: var(--text-primary);
+	font-weight: var(--weight-medium);
+}
+
 .footer {
 	display: flex;
 	gap: var(--space-5);

@@ -13,8 +13,13 @@ import { Portal } from "solid-js/web";
 import { useNavigate } from "@solidjs/router";
 import { useStore } from "@nanostores/solid";
 import { createQuery } from "@tanstack/solid-query";
-import { Search } from "lucide-solid";
+import { ArrowRight, Search } from "lucide-solid";
 import { $activeServer } from "../../stores/servers";
+import {
+	$paletteOpen,
+	closePalette,
+	togglePalette,
+} from "../../stores/search-palette";
 import type { SubsonicClient } from "../../lib/subsonic/client";
 import type { SearchResult } from "../../lib/subsonic";
 import { clientFor, searchQuery } from "../../lib/queries";
@@ -72,7 +77,7 @@ function flatten(result: SearchResult | undefined): FlatItem[] {
 }
 
 export function CommandPalette() {
-	const [open, setOpen] = createSignal(false);
+	const open = useStore($paletteOpen);
 	const [query, setQuery] = createSignal("");
 	const [debounced, setDebounced] = createSignal("");
 	const [active, setActive] = createSignal(0);
@@ -91,10 +96,10 @@ export function CommandPalette() {
 		const onKey = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
 				e.preventDefault();
-				setOpen((v) => !v);
+				togglePalette();
 			} else if (e.key === "Escape" && open()) {
 				e.preventDefault();
-				setOpen(false);
+				closePalette();
 			}
 		};
 		window.addEventListener("keydown", onKey);
@@ -127,6 +132,13 @@ export function CommandPalette() {
 	const items = createMemo(() => flatten(result()));
 	const hasActiveSearch = () => debounced().trim().length > 0;
 
+	const goToFullSearch = () => {
+		const q = debounced().trim();
+		if (!q) return;
+		closePalette();
+		navigate(`/search?q=${encodeURIComponent(q)}`);
+	};
+
 	const handleItemKey = (e: KeyboardEvent) => {
 		const list = items();
 		if (e.key === "ArrowDown") {
@@ -136,24 +148,30 @@ export function CommandPalette() {
 			e.preventDefault();
 			setActive((i) => Math.max(0, i - 1));
 		} else if (e.key === "Enter") {
+			e.preventDefault();
+			if (e.metaKey || e.ctrlKey) {
+				goToFullSearch();
+				return;
+			}
 			const item = list[active()];
 			if (item) {
-				e.preventDefault();
-				setOpen(false);
+				closePalette();
 				navigate(item.href);
+			} else if (hasActiveSearch()) {
+				goToFullSearch();
 			}
 		}
 	};
 
 	const handleSelect = (item: FlatItem) => {
-		setOpen(false);
+		closePalette();
 		navigate(item.href);
 	};
 
 	return (
 		<Show when={open()}>
 			<Portal>
-				<div class={styles.overlay} onClick={() => setOpen(false)} role="presentation">
+				<div class={styles.overlay} onClick={() => closePalette()} role="presentation">
 					<div
 						class={styles.panel}
 						role="dialog"
@@ -204,12 +222,30 @@ export function CommandPalette() {
 							</Switch>
 						</div>
 
+						<Show when={hasActiveSearch()}>
+							<button
+								type="button"
+								class={styles.seeAll}
+								onClick={goToFullSearch}
+							>
+								<Search />
+								<span class={styles.seeAllText}>
+									See all results for{" "}
+									<span class={styles.seeAllQuery}>"{debounced()}"</span>
+								</span>
+								<ArrowRight />
+							</button>
+						</Show>
+
 						<div class={styles.footer}>
 							<span class={styles.footerKey}>
 								<kbd>↑</kbd><kbd>↓</kbd> Navigate
 							</span>
 							<span class={styles.footerKey}>
 								<kbd>↵</kbd> Open
+							</span>
+							<span class={styles.footerKey}>
+								<kbd>⌘↵</kbd> See all
 							</span>
 							<span class={styles.footerKey}>
 								<kbd>Esc</kbd> Close

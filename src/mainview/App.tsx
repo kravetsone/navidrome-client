@@ -12,6 +12,7 @@ import { PlaylistView } from "./features/playlist/PlaylistView";
 import { FavoritesView } from "./features/favorites/FavoritesView";
 import { RecentView } from "./features/recent/RecentView";
 import { ConnectView } from "./features/connect/ConnectView";
+import { SearchView } from "./features/search/SearchView";
 import { SettingsView } from "./features/settings/SettingsView";
 import { $activeServerId, pingActive } from "./stores/servers";
 import {
@@ -61,6 +62,7 @@ export default function App() {
 				preload={preloadFavorites}
 			/>
 			<Route path="/recent" component={RecentView} preload={preloadRecent} />
+			<Route path="/search" component={SearchView} />
 			<Route path="/connect" component={ConnectView} />
 			<Route path="/settings" component={SettingsView} />
 		</Router>

@@ -2,6 +2,7 @@ import { onMount, type JSX } from "solid-js";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "./PlayerBar";
 import { CommandPalette } from "../features/search/CommandPalette";
+import { SearchPill } from "../features/search/SearchPill";
 import { NowPlayingView } from "../features/now-playing/NowPlayingView";
 import { QueuePanel } from "../features/queue/QueuePanel";
 import { LightboxView } from "../features/lightbox/LightboxView";
@@ -23,7 +24,9 @@ export function AppShell(props: { children: JSX.Element }) {
 				<Sidebar />
 			</aside>
 			<section class={styles.main}>
-				<div class={styles.titlebar} />
+				<div class={styles.titlebar}>
+					<SearchPill />
+				</div>
 				<div class={styles.content}>{props.children}</div>
 			</section>
 			<footer class={styles.player}>
