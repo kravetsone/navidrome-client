@@ -7,6 +7,7 @@ import { MediaCard } from "../../components/MediaCard";
 import { ArtistContextMenu } from "../../components/menus";
 import type { Artist, ArtistIndex, ServerConfig } from "../../lib/subsonic";
 import type { SubsonicClient } from "../../lib/subsonic/client";
+import { artistCoverUrl } from "../../lib/artist-cover";
 import styles from "./ArtistsView.module.css";
 
 const LATIN_LETTER = /^[A-Za-z]$/;
@@ -94,11 +95,12 @@ function ArtistsBody(props: { server: ServerConfig }) {
 									<span class={styles.indexLabel}>{section.name}</span>
 									<div class={styles.grid}>
 										<For each={section.artist}>
-											{(artist) => (
+											{(artist, i) => (
 												<ArtistCard
 													server={props.server}
 													client={client}
 													artist={artist}
+													index={i()}
 												/>
 											)}
 										</For>
@@ -134,6 +136,7 @@ function ArtistCard(props: {
 	server: ServerConfig;
 	client: SubsonicClient;
 	artist: Artist;
+	index?: number;
 }) {
 	const detail = createQuery(() =>
 		artistQuery(
@@ -142,30 +145,22 @@ function ArtistCard(props: {
 		),
 	);
 
-	const albumFallback = createMemo(() => {
-		const album = detail.data?.album?.find((a) => a.coverArt);
-		if (!album?.coverArt) return undefined;
-		return props.client.coverArtUrl(album.coverArt, 240);
-	});
-
 	const coverSrc = createMemo(() => {
 		const full = detail.data;
-		const imgUrl = full?.artistImageUrl || props.artist.artistImageUrl;
-		if (imgUrl) return imgUrl;
-		const coverId = full?.coverArt || props.artist.coverArt;
-		if (coverId) return props.client.coverArtUrl(coverId, 240);
-		// Prefer the album cover directly when we have it — skips a guaranteed
-		// 404 on getCoverArt(artistId) for Navidrome instances without a
-		// metadata agent (Last.fm/Spotify).
-		const album = albumFallback();
-		if (album) return album;
-		return props.client.coverArtUrl(props.artist.id, 240);
+		const merged = {
+			id: props.artist.id,
+			artistImageUrl: full?.artistImageUrl || props.artist.artistImageUrl,
+			coverArt: full?.coverArt ?? props.artist.coverArt,
+			album: full?.album,
+		};
+		return artistCoverUrl(props.client, merged, 240);
 	});
 
 	const coverFallbackSrc = createMemo(() => {
-		// Only used when coverSrc itself fails; same album lookup, harmless
-		// duplication since SubsonicClient caches identical URLs.
-		return albumFallback();
+		const album = detail.data?.album?.find((a) => a.coverArt);
+		return album?.coverArt
+			? props.client.coverArtUrl(album.coverArt, 240)
+			: undefined;
 	});
 
 	return (
@@ -181,6 +176,7 @@ function ArtistCard(props: {
 				coverSrc={coverSrc()}
 				coverFallbackSrc={coverFallbackSrc()}
 				round
+				index={props.index}
 			/>
 		</ArtistContextMenu>
 	);

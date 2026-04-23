@@ -3,6 +3,7 @@ import { A, useLocation } from "@solidjs/router";
 import { useStore } from "@nanostores/solid";
 import {
 	Home,
+	Search,
 	Disc3,
 	Mic2,
 	ListMusic,
@@ -17,6 +18,7 @@ type NavItem = { href: string; label: string; icon: typeof Home };
 
 const library: NavItem[] = [
 	{ href: "/", label: "Home", icon: Home },
+	{ href: "/search", label: "Search", icon: Search },
 	{ href: "/albums", label: "Albums", icon: Disc3 },
 	{ href: "/artists", label: "Artists", icon: Mic2 },
 	{ href: "/playlists", label: "Playlists", icon: ListMusic },

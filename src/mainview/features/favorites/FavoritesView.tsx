@@ -11,6 +11,7 @@ import {
 } from "../../components/menus";
 import { playQueue } from "../../stores/player";
 import type { ServerConfig } from "../../lib/subsonic";
+import { artistCoverUrl } from "../../lib/artist-cover";
 import styles from "./FavoritesView.module.css";
 
 export function FavoritesView() {
@@ -64,10 +65,7 @@ function Body(props: { server: ServerConfig }) {
 																? `${artist.albumCount} album${artist.albumCount === 1 ? "" : "s"}`
 																: undefined
 														}
-														coverSrc={
-															artist.artistImageUrl ??
-															client.coverArtUrl(artist.coverArt ?? artist.id, 240)
-														}
+														coverSrc={artistCoverUrl(client, artist, 240)}
 														round
 													/>
 												</ArtistContextMenu>

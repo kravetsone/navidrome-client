@@ -1,8 +1,17 @@
-import { For, Index, Match, Show, Switch, createMemo } from "solid-js";
+import {
+	For,
+	Index,
+	Match,
+	Show,
+	Switch,
+	createEffect,
+	createMemo,
+	createSignal,
+} from "solid-js";
 import { A, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
-import { Play, Search, Star, X } from "lucide-solid";
+import { Calendar, Disc3, Search, Star, X } from "lucide-solid";
 import { $activeServer } from "../../stores/servers";
 import { clientFor, genresQuery, searchQuery } from "../../lib/queries";
 import type {
@@ -22,6 +31,7 @@ import {
 } from "../../components/menus";
 import { playQueue } from "../../stores/player";
 import { openPalette } from "../../stores/search-palette";
+import { artistCoverUrl } from "../../lib/artist-cover";
 import styles from "./SearchView.module.css";
 
 type Tab = "all" | "songs" | "albums" | "artists";
@@ -130,24 +140,12 @@ export function SearchView() {
 					{(server) => (
 						<>
 							<div class={styles.controls}>
-								<div class={styles.tabs} role="tablist">
-									<For each={TABS}>
-										{(t) => (
-											<button
-												type="button"
-												role="tab"
-												aria-selected={tab() === t.key}
-												class={styles.tab}
-												data-active={tab() === t.key}
-												onClick={() =>
-													setParams({ tab: t.key === "all" ? undefined : t.key })
-												}
-											>
-												{t.label}
-											</button>
-										)}
-									</For>
-								</div>
+								<TabsBar
+									active={tab()}
+									onSelect={(key) =>
+										setParams({ tab: key === "all" ? undefined : key })
+									}
+								/>
 
 								<div class={styles.chips}>
 									<button
@@ -413,13 +411,7 @@ function ArtistCell(props: { artist: Artist; client: SubsonicClient }) {
 						? `${props.artist.albumCount} album${props.artist.albumCount === 1 ? "" : "s"}`
 						: undefined
 				}
-				coverSrc={
-					props.artist.artistImageUrl ??
-					props.client.coverArtUrl(
-						props.artist.coverArt ?? props.artist.id,
-						240,
-					)
-				}
+				coverSrc={artistCoverUrl(props.client, props.artist, 240)}
 				round
 			/>
 		</ArtistContextMenu>
@@ -438,7 +430,7 @@ function TopResultCard(props: { top: TopResult; client: SubsonicClient }) {
 					data-kind="artist"
 				>
 					<CoverArt
-						src={a.artistImageUrl ?? props.client.coverArtUrl(a.coverArt ?? a.id, 480)}
+						src={artistCoverUrl(props.client, a, 480)}
 						name={a.name}
 						round
 						class={styles.topCover}
@@ -486,6 +478,57 @@ function TopResultCard(props: { top: TopResult; client: SubsonicClient }) {
 				</div>
 			</A>
 		</section>
+	);
+}
+
+function TabsBar(props: { active: Tab; onSelect: (key: Tab) => void }) {
+	let listRef!: HTMLDivElement;
+	const buttons = new Map<Tab, HTMLButtonElement>();
+	const [indicator, setIndicator] = createSignal({ x: 0, w: 0, visible: false });
+
+	const updateIndicator = () => {
+		const btn = buttons.get(props.active);
+		if (!btn || !listRef) return;
+		setIndicator({
+			x: btn.offsetLeft,
+			w: btn.offsetWidth,
+			visible: true,
+		});
+	};
+
+	createEffect(() => {
+		// track active tab changes
+		props.active;
+		requestAnimationFrame(updateIndicator);
+	});
+
+	return (
+		<div class={styles.tabs} role="tablist" ref={listRef}>
+			<span
+				class={styles.tabIndicator}
+				data-visible={indicator().visible}
+				style={{
+					transform: `translateX(${indicator().x}px)`,
+					width: `${indicator().w}px`,
+				}}
+				aria-hidden="true"
+			/>
+			<For each={TABS}>
+				{(t) => (
+					<button
+						type="button"
+						role="tab"
+						aria-selected={props.active === t.key}
+						class={styles.tab}
+						data-active={props.active === t.key}
+						ref={(el) => buttons.set(t.key, el)}
+						onClick={() => props.onSelect(t.key)}
+					>
+						{t.label}
+					</button>
+				)}
+			</For>
+		</div>
 	);
 }
 
@@ -557,15 +600,41 @@ function EmptyTabNote(props: { kind: "songs" | "albums" | "artists" }) {
 }
 
 function EmptyPrompt(props: { message?: string } = {}) {
+	const isError = () => props.message != null;
 	return (
 		<div class={styles.empty}>
-			<Play class={styles.emptyIcon} />
+			<Search class={styles.emptyIcon} />
 			<p class={styles.emptyTitle}>
-				{props.message ?? "Start typing to search your library."}
+				{props.message ?? "Search your library, then refine."}
 			</p>
-			<p class={styles.emptyHint}>
-				Press <kbd>⌘K</kbd> anywhere to open the command palette.
-			</p>
+			<Show when={!isError()}>
+				<div class={styles.emptyFilters} aria-hidden="true">
+					<span class={styles.emptyFilterChip}>
+						<Star class={styles.chipIcon} />
+						Starred
+					</span>
+					<span class={styles.emptyFilterChip}>
+						<Calendar class={styles.chipIcon} />
+						By year
+					</span>
+					<span class={styles.emptyFilterChip}>
+						<Disc3 class={styles.chipIcon} />
+						By genre
+					</span>
+				</div>
+				<button
+					type="button"
+					class={styles.emptyCta}
+					onClick={() => openPalette()}
+				>
+					<Search />
+					<span>Start searching</span>
+					<kbd>⌘K</kbd>
+				</button>
+				<p class={styles.emptyHint}>
+					Tip: <kbd>⌘K</kbd> opens the quick palette from anywhere.
+				</p>
+			</Show>
 		</div>
 	);
 }

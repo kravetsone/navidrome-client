@@ -23,6 +23,7 @@ import {
 import type { SubsonicClient } from "../../lib/subsonic/client";
 import type { SearchResult } from "../../lib/subsonic";
 import { clientFor, searchQuery } from "../../lib/queries";
+import { artistCoverUrl } from "../../lib/artist-cover";
 import { CoverArt } from "../../components/CoverArt";
 import styles from "./CommandPalette.module.css";
 
@@ -32,11 +33,14 @@ interface FlatItem {
 	title: string;
 	subtitle?: string;
 	href: string;
-	coverId?: string;
+	coverUrl?: string;
 	round?: boolean;
 }
 
-function flatten(result: SearchResult | undefined): FlatItem[] {
+function flatten(
+	result: SearchResult | undefined,
+	client: SubsonicClient | null,
+): FlatItem[] {
 	if (!result) return [];
 	const items: FlatItem[] = [];
 	for (const artist of result.artist ?? []) {
@@ -49,7 +53,7 @@ function flatten(result: SearchResult | undefined): FlatItem[] {
 					? `${artist.albumCount} album${artist.albumCount === 1 ? "" : "s"}`
 					: undefined,
 			href: `/artist/${encodeURIComponent(artist.id)}`,
-			coverId: artist.coverArt ?? artist.id,
+			coverUrl: client ? artistCoverUrl(client, artist, 96) : undefined,
 			round: true,
 		});
 	}
@@ -60,7 +64,7 @@ function flatten(result: SearchResult | undefined): FlatItem[] {
 			title: album.name,
 			subtitle: album.artist,
 			href: `/album/${encodeURIComponent(album.id)}`,
-			coverId: album.coverArt,
+			coverUrl: client?.coverArtUrl(album.coverArt, 96),
 		});
 	}
 	for (const song of result.song ?? []) {
@@ -70,7 +74,7 @@ function flatten(result: SearchResult | undefined): FlatItem[] {
 			title: song.title,
 			subtitle: [song.artist, song.album].filter(Boolean).join(" · "),
 			href: `/album/${encodeURIComponent(song.albumId ?? "")}`,
-			coverId: song.coverArt,
+			coverUrl: client?.coverArtUrl(song.coverArt, 96),
 		});
 	}
 	return items;
@@ -134,7 +138,7 @@ export function CommandPalette() {
 			song: r.song?.slice(0, 8),
 		};
 	});
-	const items = createMemo(() => flatten(result()));
+	const items = createMemo(() => flatten(result(), ctx()?.client ?? null));
 	const hasActiveSearch = () => debounced().trim().length > 0;
 
 	const goToFullSearch = () => {
@@ -269,7 +273,7 @@ function ResultSections(props: {
 	client: SubsonicClient | null;
 	onSelect: (item: FlatItem) => void;
 }) {
-	const flat = createMemo(() => flatten(props.result));
+	const flat = createMemo(() => flatten(props.result, props.client));
 	const artists = () => (props.result.artist ?? []).length;
 	const albums = () => (props.result.album ?? []).length;
 
@@ -283,7 +287,7 @@ function ResultSections(props: {
 							<Item
 								item={item}
 								active={props.active === index()}
-								client={props.client}
+								staggerIndex={index()}
 								onSelect={() => props.onSelect(item)}
 							/>
 						)}
@@ -299,7 +303,7 @@ function ResultSections(props: {
 							<Item
 								item={item}
 								active={props.active === artists() + index()}
-								client={props.client}
+								staggerIndex={artists() + index()}
 								onSelect={() => props.onSelect(item)}
 							/>
 						)}
@@ -315,7 +319,7 @@ function ResultSections(props: {
 							<Item
 								item={item}
 								active={props.active === artists() + albums() + index()}
-								client={props.client}
+								staggerIndex={artists() + albums() + index()}
 								onSelect={() => props.onSelect(item)}
 							/>
 						)}
@@ -329,17 +333,18 @@ function ResultSections(props: {
 function Item(props: {
 	item: FlatItem;
 	active: boolean;
-	client: SubsonicClient | null;
+	staggerIndex?: number;
 	onSelect: () => void;
 }) {
 	return (
 		<div
 			class={styles.item}
 			data-active={props.active}
+			style={{ "--i": Math.min(props.staggerIndex ?? 0, 9) }}
 			onClick={props.onSelect}
 		>
 			<CoverArt
-				src={props.client?.coverArtUrl(props.item.coverId, 96)}
+				src={props.item.coverUrl}
 				name={props.item.title}
 				round={props.item.round}
 				size={36}
