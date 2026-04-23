@@ -197,6 +197,22 @@ export const $currentSong = computed(
 
 export const $hasQueue = computed($queue, (q) => q.length > 0);
 
+/**
+ * Mutate any queued entries matching `id` in place. The $queue holds snapshots
+ * captured when songs were enqueued, so cache-level patches (e.g. star toggles)
+ * don't propagate here — this is how we keep the current-song UI in sync.
+ */
+export function patchQueueSong(id: string, patch: Partial<Song>): void {
+	const queue = $queue.get();
+	let changed = false;
+	const next = queue.map((s) => {
+		if (s.id !== id) return s;
+		changed = true;
+		return { ...s, ...patch };
+	});
+	if (changed) $queue.set(next);
+}
+
 function claimQueueServer() {
 	$queueServerId.set($activeServerId.get());
 }

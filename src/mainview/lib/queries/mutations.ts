@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/solid-query";
 import type { SubsonicClient } from "../subsonic/client";
 import type { Album, Artist, Playlist, Song } from "../subsonic/models";
 import { toastError } from "../../stores/toast";
+import { $queue, patchQueueSong } from "../../stores/player";
 import { qk } from "./keys";
 
 interface MutationCtx {
@@ -119,10 +120,32 @@ export function starMutation(ctx: MutationCtx) {
 		onMutate: async (vars: StarVars) => {
 			await ctx.queryClient.cancelQueries({ queryKey: qk.server(ctx.serverId) });
 			const snapshot = applyStarToCaches(ctx.queryClient, ctx.serverId, vars);
-			return { snapshot };
+			let queueRollback: { id: string; prev: string | undefined } | null = null;
+			if (vars.kind === "song") {
+				const prev = $queue.get().find((s) => s.id === vars.id)?.starred;
+				queueRollback = { id: vars.id, prev };
+				patchQueueSong(vars.id, {
+					starred: vars.starred ? nowIso() : undefined,
+				});
+			}
+			return { snapshot, queueRollback };
 		},
-		onError: (err: unknown, _vars: StarVars, context: { snapshot: StarSnapshot } | undefined) => {
+		onError: (
+			err: unknown,
+			_vars: StarVars,
+			context:
+				| {
+						snapshot: StarSnapshot;
+						queueRollback: { id: string; prev: string | undefined } | null;
+				  }
+				| undefined,
+		) => {
 			if (context?.snapshot) rollback(ctx.queryClient, context.snapshot);
+			if (context?.queueRollback) {
+				patchQueueSong(context.queueRollback.id, {
+					starred: context.queueRollback.prev,
+				});
+			}
 			toastError(err, "Couldn't update favorite");
 		},
 		onSettled: () => {

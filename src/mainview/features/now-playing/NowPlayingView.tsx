@@ -13,6 +13,8 @@ import {
 	ChevronDown,
 	Mic2,
 } from "lucide-solid";
+import { HeartButton } from "../../components/HeartButton";
+import { SongContextMenu } from "../../components/menus";
 import {
 	$currentSong,
 	$isPlaying,
@@ -220,53 +222,55 @@ export function NowPlayingView() {
 						fallback={
 							<div class={styles.layout} data-panel={lyricsMode() === "panel"}>
 								<div class={styles.stage}>
-									<button
-										type="button"
-										class={styles.coverWrap}
-										onClick={(e) => {
-											e.stopPropagation();
-											openLightbox(fullCoverSrc(), song()!.title);
-										}}
-										aria-label={`View artwork for ${song()!.title}`}
-									>
-										<CoverArt
-											src={coverSrc()}
-											name={song()!.title}
-											class={styles.cover}
-										/>
-									</button>
+									<SongContextMenu song={song()!}>
+										<button
+											type="button"
+											class={styles.coverWrap}
+											onClick={(e) => {
+												e.stopPropagation();
+												openLightbox(fullCoverSrc(), song()!.title);
+											}}
+											aria-label={`View artwork for ${song()!.title}`}
+										>
+											<CoverArt
+												src={coverSrc()}
+												name={song()!.title}
+												class={styles.cover}
+											/>
+										</button>
 
-									<div class={styles.info}>
-										<h1 class={styles.title}>{song()!.title}</h1>
-										<Show when={song()!.artist}>
-											<Show
-												when={song()!.artistId}
-												fallback={<p class={styles.artist}>{song()!.artist}</p>}
-											>
-												<A
-													class={`${styles.artist} ${styles.entityLink}`}
-													href={`/artist/${encodeURIComponent(song()!.artistId!)}`}
-													onClick={closeNowPlaying}
+										<div class={styles.info}>
+											<h1 class={styles.title}>{song()!.title}</h1>
+											<Show when={song()!.artist}>
+												<Show
+													when={song()!.artistId}
+													fallback={<p class={styles.artist}>{song()!.artist}</p>}
 												>
-													{song()!.artist}
-												</A>
+													<A
+														class={`${styles.artist} ${styles.entityLink}`}
+														href={`/artist/${encodeURIComponent(song()!.artistId!)}`}
+														onClick={closeNowPlaying}
+													>
+														{song()!.artist}
+													</A>
+												</Show>
 											</Show>
-										</Show>
-										<Show when={song()!.album}>
-											<Show
-												when={song()!.albumId}
-												fallback={<p class={styles.album}>{song()!.album}</p>}
-											>
-												<A
-													class={`${styles.album} ${styles.entityLink}`}
-													href={`/album/${encodeURIComponent(song()!.albumId!)}`}
-													onClick={closeNowPlaying}
+											<Show when={song()!.album}>
+												<Show
+													when={song()!.albumId}
+													fallback={<p class={styles.album}>{song()!.album}</p>}
 												>
-													{song()!.album}
-												</A>
+													<A
+														class={`${styles.album} ${styles.entityLink}`}
+														href={`/album/${encodeURIComponent(song()!.albumId!)}`}
+														onClick={closeNowPlaying}
+													>
+														{song()!.album}
+													</A>
+												</Show>
 											</Show>
-										</Show>
-									</div>
+										</div>
+									</SongContextMenu>
 
 									<div class={styles.progress}>
 										<span class={styles.time}>{formatTime(position())}</span>
@@ -288,6 +292,13 @@ export function NowPlayingView() {
 									</div>
 
 									<div class={styles.controls}>
+										<HeartButton
+											kind="song"
+											id={song()!.id}
+											starred={Boolean(song()!.starred)}
+											compact
+											size={20}
+										/>
 										<button
 											class={styles.ctrl}
 											data-active={shuffle()}

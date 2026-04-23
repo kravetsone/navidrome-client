@@ -36,6 +36,7 @@ import { $isCrossServerPlayback, $queueServer } from "../stores/servers";
 import { clientFor } from "../lib/queries/useActiveClient";
 import { CoverArt } from "../components/CoverArt";
 import { HeartButton } from "../components/HeartButton";
+import { SongContextMenu } from "../components/menus";
 import { SleepTimerButton } from "../components/SleepTimerButton";
 import styles from "./PlayerBar.module.css";
 
@@ -117,19 +118,19 @@ export function PlayerBar() {
 
 	return (
 		<div class={styles.player}>
-			<div class={styles.track}>
-				<Show
-					when={song()}
-					fallback={
-						<>
-							<div class={styles.art} />
-							<div class={styles.trackText}>
-								<span class={styles.trackMuted}>Nothing playing</span>
-							</div>
-						</>
-					}
-				>
-					{(s) => (
+			<Show
+				when={song()}
+				fallback={
+					<div class={styles.track}>
+						<div class={styles.art} />
+						<div class={styles.trackText}>
+							<span class={styles.trackMuted}>Nothing playing</span>
+						</div>
+					</div>
+				}
+			>
+				{(s) => (
+					<SongContextMenu song={s()} as="div" triggerClass={styles.track}>
 						<Show when={s().id} keyed>
 							<button
 								type="button"
@@ -182,9 +183,9 @@ export function PlayerBar() {
 								</Show>
 							</div>
 						</Show>
-					)}
-				</Show>
-			</div>
+					</SongContextMenu>
+				)}
+			</Show>
 
 			<div class={styles.controls}>
 				<div class={styles.buttons}>
