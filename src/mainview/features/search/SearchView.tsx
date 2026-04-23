@@ -7,11 +7,14 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	on,
+	onCleanup,
+	onMount,
 } from "solid-js";
 import { A, useSearchParams } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { useStore } from "@nanostores/solid";
-import { Calendar, Disc3, Search, Star, X } from "lucide-solid";
+import { Search, Star, X } from "lucide-solid";
 import { $activeServer } from "../../stores/servers";
 import { clientFor, genresQuery, searchQuery } from "../../lib/queries";
 import type {
@@ -30,7 +33,6 @@ import {
 	ArtistContextMenu,
 } from "../../components/menus";
 import { playQueue } from "../../stores/player";
-import { openPalette } from "../../stores/search-palette";
 import { artistCoverUrl } from "../../lib/artist-cover";
 import styles from "./SearchView.module.css";
 
@@ -102,6 +104,54 @@ export function SearchView() {
 	const hasFilters = () =>
 		starred() || year() !== "any" || genre().length > 0;
 
+	const [input, setInput] = createSignal(query());
+	let inputRef!: HTMLInputElement;
+	let debounceTimer: number | undefined;
+
+	const commitQuery = (value: string) => {
+		const trimmed = value.trim();
+		setParams({ q: trimmed.length > 0 ? trimmed : undefined });
+	};
+
+	const onInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
+		const value = event.currentTarget.value;
+		setInput(value);
+		if (debounceTimer) window.clearTimeout(debounceTimer);
+		debounceTimer = window.setTimeout(() => commitQuery(value), 220);
+	};
+
+	const onSubmit = (event: SubmitEvent) => {
+		event.preventDefault();
+		if (debounceTimer) window.clearTimeout(debounceTimer);
+		commitQuery(input());
+	};
+
+	const clearInput = () => {
+		if (debounceTimer) window.clearTimeout(debounceTimer);
+		setInput("");
+		commitQuery("");
+		inputRef?.focus();
+	};
+
+	// Sync input when URL changes externally (back/forward, palette, links).
+	// `on` tracks only query() — not input() — so typing never triggers this.
+	createEffect(
+		on(query, (urlValue) => {
+			if (urlValue !== input().trim()) setInput(urlValue);
+		}),
+	);
+
+	onMount(() => {
+		inputRef?.focus();
+		if (input().length > 0) {
+			inputRef.setSelectionRange(input().length, input().length);
+		}
+	});
+
+	onCleanup(() => {
+		if (debounceTimer) window.clearTimeout(debounceTimer);
+	});
+
 	return (
 		<div class={styles.page}>
 			<header class={styles.header}>
@@ -116,17 +166,31 @@ export function SearchView() {
 						Results for <em class={styles.titleQuery}>"{query()}"</em>
 					</h1>
 				</Show>
-				<div class={styles.headerActions}>
-					<button
-						type="button"
-						class={styles.refineButton}
-						onClick={() => openPalette()}
-					>
-						<Search />
-						<span>{query() ? "Refine search" : "Start searching"}</span>
-						<kbd>⌘K</kbd>
-					</button>
-				</div>
+				<form class={styles.searchForm} role="search" onSubmit={onSubmit}>
+					<Search class={styles.searchIcon} aria-hidden="true" />
+					<input
+						ref={inputRef}
+						type="search"
+						class={styles.searchInput}
+						placeholder="Songs, albums, artists…"
+						spellcheck={false}
+						autocomplete="off"
+						autocorrect="off"
+						aria-label="Search your library"
+						value={input()}
+						onInput={onInput}
+					/>
+					<Show when={input().length > 0}>
+						<button
+							type="button"
+							class={styles.searchClear}
+							aria-label="Clear search"
+							onClick={clearInput}
+						>
+							<X />
+						</button>
+					</Show>
+				</form>
 			</header>
 
 			<Show
@@ -605,34 +669,12 @@ function EmptyPrompt(props: { message?: string } = {}) {
 		<div class={styles.empty}>
 			<Search class={styles.emptyIcon} />
 			<p class={styles.emptyTitle}>
-				{props.message ?? "Search your library, then refine."}
+				{props.message ??
+					"Start typing to search songs, albums, and artists."}
 			</p>
 			<Show when={!isError()}>
-				<div class={styles.emptyFilters} aria-hidden="true">
-					<span class={styles.emptyFilterChip}>
-						<Star class={styles.chipIcon} />
-						Starred
-					</span>
-					<span class={styles.emptyFilterChip}>
-						<Calendar class={styles.chipIcon} />
-						By year
-					</span>
-					<span class={styles.emptyFilterChip}>
-						<Disc3 class={styles.chipIcon} />
-						By genre
-					</span>
-				</div>
-				<button
-					type="button"
-					class={styles.emptyCta}
-					onClick={() => openPalette()}
-				>
-					<Search />
-					<span>Start searching</span>
-					<kbd>⌘K</kbd>
-				</button>
 				<p class={styles.emptyHint}>
-					Tip: <kbd>⌘K</kbd> opens the quick palette from anywhere.
+					Then refine with tabs, starred, year, or genre.
 				</p>
 			</Show>
 		</div>
