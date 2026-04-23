@@ -314,6 +314,12 @@ export function closeQueue() {
 	$queueOpen.set(false);
 }
 
+function dedupAgainst(list: Song[], queue: Song[]): Song[] {
+	if (queue.length === 0) return list;
+	const present = new Set(queue.map((s) => s.id));
+	return list.filter((s) => !present.has(s.id));
+}
+
 export function addToQueue(songs: Song | Song[]) {
 	const list = Array.isArray(songs) ? songs : [songs];
 	if (list.length === 0) return;
@@ -322,7 +328,9 @@ export function addToQueue(songs: Song | Song[]) {
 		playQueue(list, 0);
 		return;
 	}
-	$queue.set([...q, ...list]);
+	const fresh = dedupAgainst(list, q);
+	if (fresh.length === 0) return;
+	$queue.set([...q, ...fresh]);
 }
 
 export function playNextInQueue(songs: Song | Song[]) {
@@ -333,9 +341,11 @@ export function playNextInQueue(songs: Song | Song[]) {
 		playQueue(list, 0);
 		return;
 	}
+	const fresh = dedupAgainst(list, q);
+	if (fresh.length === 0) return;
 	const idx = $currentIndex.get();
 	const insertAt = Math.max(0, idx) + 1;
-	$queue.set([...q.slice(0, insertAt), ...list, ...q.slice(insertAt)]);
+	$queue.set([...q.slice(0, insertAt), ...fresh, ...q.slice(insertAt)]);
 }
 
 export function insertIntoQueue(songs: Song | Song[], atIndex: number) {
@@ -346,11 +356,13 @@ export function insertIntoQueue(songs: Song | Song[], atIndex: number) {
 		playQueue(list, 0);
 		return;
 	}
+	const fresh = dedupAgainst(list, q);
+	if (fresh.length === 0) return;
 	const insertAt = Math.max(0, Math.min(atIndex, q.length));
-	$queue.set([...q.slice(0, insertAt), ...list, ...q.slice(insertAt)]);
+	$queue.set([...q.slice(0, insertAt), ...fresh, ...q.slice(insertAt)]);
 	const current = $currentIndex.get();
 	if (current >= 0 && insertAt <= current) {
-		$currentIndex.set(current + list.length);
+		$currentIndex.set(current + fresh.length);
 	}
 }
 
