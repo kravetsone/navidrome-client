@@ -17,11 +17,13 @@ import {
 	createSortable,
 	type DragEvent as SortableDragEvent,
 } from "@thisbeyond/solid-dnd";
-import { ChevronDown, GripVertical, X } from "lucide-solid";
+import { ChevronDown, GripVertical, Radio, X } from "lucide-solid";
 import {
 	$queue,
 	$currentIndex,
 	$queueOpen,
+	$queueSources,
+	$smartRadio,
 	addToQueue,
 	closeQueue,
 	insertIntoQueue,
@@ -29,6 +31,7 @@ import {
 	playNextInQueue,
 	removeFromQueue,
 	reorderQueue,
+	toggleSmartRadio,
 } from "../../stores/player";
 import { $activeServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
@@ -77,6 +80,8 @@ export function QueuePanel() {
 	const queue = useStore($queue);
 	const currentIndex = useStore($currentIndex);
 	const activeServer = useStore($activeServer);
+	const queueSources = useStore($queueSources);
+	const smartRadio = useStore($smartRadio);
 	const [historyOpen, setHistoryOpen] = createSignal(false);
 	const [dropActive, setDropActive] = createSignal(false);
 	const [rowDropTarget, setRowDropTarget] = createSignal<{
@@ -209,14 +214,35 @@ export function QueuePanel() {
 				>
 					<header class={styles.header}>
 						<h2 class={styles.title}>Queue</h2>
-						<button
-							type="button"
-							class={styles.closeBtn}
-							onClick={closeQueue}
-							aria-label="Close queue"
-						>
-							<X size={18} />
-						</button>
+						<div class={styles.headerActions}>
+							<button
+								type="button"
+								class={styles.radioBtn}
+								onClick={toggleSmartRadio}
+								data-active={smartRadio()}
+								aria-pressed={smartRadio()}
+								aria-label={
+									smartRadio()
+										? "Turn off smart radio"
+										: "Turn on smart radio"
+								}
+								title={
+									smartRadio()
+										? "Smart radio on — similar tracks auto-queue"
+										: "Smart radio off"
+								}
+							>
+								<Radio size={16} />
+							</button>
+							<button
+								type="button"
+								class={styles.closeBtn}
+								onClick={closeQueue}
+								aria-label="Close queue"
+							>
+								<X size={18} />
+							</button>
+						</div>
 					</header>
 
 					<div class={styles.scroll}>
@@ -259,12 +285,16 @@ export function QueuePanel() {
 									<SortableProvider ids={upNextRows().map((r) => r.id)}>
 										<ol class={styles.list}>
 											<For each={upNextRows()}>
-												{(row) => {
+												{(row, index) => {
 													const target = () => rowDropTarget();
 													return (
 														<SortableRow
 															row={row}
 															cover={coverFor(row.song)}
+															staggerIndex={Math.min(index(), 15)}
+															isRadio={
+																queueSources()[row.song.id] === "radio"
+															}
 															dropAbove={
 																target()?.rowId === row.id &&
 																target()?.above === true
@@ -317,10 +347,11 @@ export function QueuePanel() {
 								<Show when={historyOpen()}>
 									<ol class={styles.list}>
 										<For each={historyRows()}>
-											{(row) => (
+											{(row, index) => (
 												<StaticRow
 													song={row.song}
 													cover={coverFor(row.song)}
+													staggerIndex={Math.min(index(), 15)}
 													onPlay={() => jumpTo(row.queueIndex)}
 													onRemove={() => removeFromQueue(row.queueIndex)}
 												/>
@@ -362,6 +393,8 @@ function NowPlayingRow(props: { song: Song; cover?: string }) {
 function SortableRow(props: {
 	row: RowEntry;
 	cover?: string;
+	staggerIndex?: number;
+	isRadio?: boolean;
 	dropAbove?: boolean;
 	dropBelow?: boolean;
 	onNativeDragOver?: (e: DragEvent) => void;
@@ -373,9 +406,11 @@ function SortableRow(props: {
 			ref={sortable.ref}
 			class={styles.row}
 			data-dragging={sortable.isActiveDraggable}
+			data-radio={props.isRadio ? "true" : undefined}
 			data-drop-above={props.dropAbove ? "true" : undefined}
 			data-drop-below={props.dropBelow ? "true" : undefined}
 			style={{
+				"--i": props.staggerIndex ?? 0,
 				transform: sortable.transform
 					? `translate3d(${sortable.transform.x}px, ${sortable.transform.y}px, 0)`
 					: undefined,
@@ -400,7 +435,12 @@ function SortableRow(props: {
 				class={styles.cover}
 			/>
 			<div class={styles.text} onClick={() => jumpTo(props.row.queueIndex)}>
-				<span class={styles.songTitle}>{props.row.song.title}</span>
+				<span class={styles.songTitle}>
+					<Show when={props.isRadio}>
+						<Radio size={11} class={styles.radioMark} aria-hidden="true" />
+					</Show>
+					{props.row.song.title}
+				</span>
 				<Show when={props.row.song.artist}>
 					<span class={styles.songArtist}>{props.row.song.artist}</span>
 				</Show>
@@ -423,11 +463,16 @@ function SortableRow(props: {
 function StaticRow(props: {
 	song: Song;
 	cover?: string;
+	staggerIndex?: number;
 	onPlay: () => void;
 	onRemove: () => void;
 }) {
 	return (
-		<li class={styles.row} data-history>
+		<li
+			class={styles.row}
+			data-history
+			style={{ "--i": props.staggerIndex ?? 0 }}
+		>
 			<CoverArt
 				src={props.cover}
 				name={props.song.title}

@@ -10,6 +10,7 @@ import { hydratePlayer } from "./stores/player";
 import { hydrateHistory } from "./stores/history";
 import { initDiscordPresence } from "./stores/discord-presence";
 import { installNowPlayingBridge } from "./lib/nowPlayingBridge";
+import { installSmartRadio } from "./lib/player/radio";
 import App from "./App";
 
 void electroview;
@@ -23,6 +24,7 @@ async function boot() {
 	attachQueryPersister(queryClient);
 	initDiscordPresence();
 	installNowPlayingBridge();
+	installSmartRadio();
 
 	render(
 		() => (

@@ -377,6 +377,22 @@ export class SubsonicClient {
 		}
 	}
 
+	/**
+	 * getSimilarSongs2 takes any id (song/album/artist) and returns tracks the
+	 * server considers related. Navidrome falls back to random songs by the
+	 * same artist when similarity data is thin, so the caller must still dedup
+	 * against the current queue and play history.
+	 */
+	async getSimilarSongs2(id: string, count = 20): Promise<Song[]> {
+		const resp = (await this.call("getSimilarSongs2", {
+			id,
+			count,
+		})) as SubsonicResponse & {
+			similarSongs2?: { song?: Song[] };
+		};
+		return resp.similarSongs2?.song ?? [];
+	}
+
 	async search3(options: {
 		query: string;
 		artistCount?: number;

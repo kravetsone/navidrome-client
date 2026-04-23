@@ -50,4 +50,7 @@ export const qk = {
 
 	lyrics: (serverId: string, songId: string) =>
 		[...qk.server(serverId), "lyrics", songId] as const,
+
+	similar: (serverId: string, songId: string) =>
+		[...qk.server(serverId), "similar", songId] as const,
 };

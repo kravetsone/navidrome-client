@@ -70,7 +70,14 @@
 	color: var(--text-primary);
 }
 
-.closeBtn {
+.headerActions {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+}
+
+.closeBtn,
+.radioBtn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -83,12 +90,34 @@
 	cursor: pointer;
 	transition:
 		color var(--duration-fast) var(--ease-standard),
-		background var(--duration-fast) var(--ease-standard);
+		background var(--duration-fast) var(--ease-standard),
+		box-shadow var(--duration-fast) var(--ease-standard);
 }
 
-.closeBtn:hover {
+.closeBtn:hover,
+.radioBtn:hover {
 	color: var(--text-primary);
 	background: var(--surface-hover);
+}
+
+.radioBtn[data-active="true"] {
+	color: var(--accent);
+	background: var(--accent-glow);
+	box-shadow: inset 0 0 0 1px
+		color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+.radioBtn[data-active="true"]:hover {
+	color: var(--accent);
+	background: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+.radioMark {
+	display: inline-block;
+	vertical-align: -1px;
+	margin-right: var(--space-1);
+	color: var(--accent);
+	opacity: 0.85;
 }
 
 .scroll {
@@ -139,6 +168,18 @@
 	cursor: pointer;
 	transition: background var(--duration-fast) var(--ease-standard);
 	touch-action: none;
+	animation: rowIn 220ms var(--ease-standard) both;
+	animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+@keyframes rowIn {
+	from { opacity: 0; transform: translateY(-6px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.row[data-dragging="true"],
+.row[style*="translate3d"] {
+	animation: none;
 }
 
 .row[data-drop-above="true"]::before,

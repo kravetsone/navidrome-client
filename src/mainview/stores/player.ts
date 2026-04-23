@@ -4,6 +4,7 @@ import { getSnapshot, persistKv } from "../lib/persistence";
 
 export type RepeatMode = "off" | "all" | "one";
 export type LyricsMode = "off" | "panel" | "cinematic";
+export type QueueSource = "user" | "radio";
 
 const DEFAULT_VOLUME = 0.8;
 
@@ -44,6 +45,8 @@ function sanitizePosition(v: unknown): number {
 
 export const $queue = atom<Song[]>([]);
 export const $currentIndex = atom<number>(-1);
+export const $queueSources = atom<Record<string, QueueSource>>({});
+export const $smartRadio = atom<boolean>(false);
 const shufflePlayed = new Set<string>();
 let shuffleQueueRef: Song[] | null = null;
 
@@ -126,6 +129,7 @@ export function hydratePlayer(): void {
 	$repeat.set(asRepeat(kv.repeat));
 	$shuffle.set(Boolean(kv.shuffle));
 	$lyricsMode.set(asLyricsMode(kv.lyricsMode));
+	$smartRadio.set(Boolean(kv.smartRadio));
 
 	const queue = sanitizeQueue(kv.queue);
 	const index = clampIndex(kv.currentIndex, queue.length);
@@ -143,6 +147,7 @@ export function hydratePlayer(): void {
 		$repeat.listen((v) => persistKv("repeat", v));
 		$shuffle.listen((v) => persistKv("shuffle", v));
 		$lyricsMode.listen((v) => persistKv("lyricsMode", v));
+		$smartRadio.listen((v) => persistKv("smartRadio", v));
 		$queue.listen((q) => persistKv("queue", q));
 		$currentIndex.listen((i) => persistKv("currentIndex", i));
 		$isPlaying.listen((playing) => {
@@ -166,6 +171,7 @@ export const $hasQueue = computed($queue, (q) => q.length > 0);
 
 export function playSong(song: Song) {
 	$queue.set([song]);
+	$queueSources.set({});
 	$currentIndex.set(0);
 	$isPlaying.set(true);
 }
@@ -175,8 +181,27 @@ export function playQueue(songs: Song[], startIndex = 0) {
 	const idx = Math.max(0, Math.min(startIndex, songs.length - 1));
 	resetShuffleHistory();
 	$queue.set(songs.slice());
+	$queueSources.set({});
 	$currentIndex.set(idx);
 	$isPlaying.set(true);
+}
+
+export function appendRadioTracks(songs: Song[]) {
+	if (songs.length === 0) return;
+	const existing = $queue.get();
+	const existingIds = new Set(existing.map((s) => s.id));
+	const deduped = songs.filter((s) => !existingIds.has(s.id));
+	if (deduped.length === 0) return;
+	$queue.set([...existing, ...deduped]);
+	const sources = { ...$queueSources.get() };
+	for (const s of deduped) {
+		if (!sources[s.id]) sources[s.id] = "radio";
+	}
+	$queueSources.set(sources);
+}
+
+export function toggleSmartRadio() {
+	$smartRadio.set(!$smartRadio.get());
 }
 
 export function playNext() {
