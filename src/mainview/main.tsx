@@ -8,16 +8,21 @@ import { attachQueryPersister, restoreQueryCache } from "./lib/queries/persist";
 import { hydrateServers } from "./stores/servers";
 import { hydratePlayer } from "./stores/player";
 import { hydrateHistory } from "./stores/history";
+import { hydratePreferences } from "./stores/preferences";
+import { installAppearanceEffect } from "./lib/accent-palette";
 import { initDiscordPresence } from "./stores/discord-presence";
 import { installNowPlayingBridge } from "./lib/nowPlayingBridge";
 import { installSmartRadio } from "./lib/player/radio";
 import { installAmbientPrewarm } from "./lib/ambient-prewarm";
+import { installUpdater } from "./stores/updater";
 import App from "./App";
 
 void electroview;
 
 async function boot() {
 	await hydratePersistence();
+	hydratePreferences();
+	installAppearanceEffect();
 	hydrateServers();
 	hydratePlayer();
 	hydrateHistory();
@@ -27,6 +32,7 @@ async function boot() {
 	installNowPlayingBridge();
 	installSmartRadio();
 	installAmbientPrewarm();
+	installUpdater();
 
 	render(
 		() => (

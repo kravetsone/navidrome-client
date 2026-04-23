@@ -27,6 +27,10 @@
 	transition: background var(--duration-ambient) var(--ease-standard);
 }
 
+:global(:root[data-ambient="off"]) .ambient {
+	display: none;
+}
+
 .sidebar {
 	grid-area: sidebar;
 	background: var(--surface-sidebar);

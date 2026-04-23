@@ -34,7 +34,7 @@ src/shared/    RPC schema + persistence/discord payload types. Types-only — im
 
 `src/shared/rpc-schema.ts` defines `AppRPCSchema` with two halves (`bun` and `webview`), each with typed `requests`. `src/bun/index.ts` calls `BrowserView.defineRPC<AppRPCSchema>({ handlers: { requests: {...} } })`; `src/mainview/lib/electroview.ts` mirrors it with `Electroview.defineRPC<AppRPCSchema>`. When adding cross-process calls, edit the schema first, then implement both handler sides — the types will enforce the rest.
 
-Current request surface: persistence snapshot/mutations, Discord presence, now-playing meta (tray title), and `playerControl` (tray → webview play/pause/next/prev).
+Current request surface: persistence snapshot/mutations, Discord presence (`setDiscordPresence`/`clearDiscordPresence`/`setDiscordPrefs`), now-playing meta (tray title), `playerControl` (tray → webview play/pause/next/prev), and `openDataFolder` (Advanced settings → Finder).
 
 ### Persistence: SQLite lives in Bun, mirrored to nanostores in the webview
 
@@ -42,11 +42,12 @@ Current request surface: persistence snapshot/mutations, Discord presence, now-p
 
 Webview boot (`src/mainview/main.tsx` → `boot()`) order matters:
 1. `hydratePersistence()` — RPC call `persistenceSnapshot` pulls `{kv, servers, history}` once.
-2. `hydrateServers/Player/History()` — nanostores read from the snapshot synchronously.
-3. `restoreQueryCache` + `attachQueryPersister` — TanStack Query cache is serialized into the same `kv` table.
-4. `initDiscordPresence` + `installNowPlayingBridge` — wire side-effects.
+2. `hydratePreferences()` + `installAppearanceEffect()` — preferences store wires to the `preferences` KV key; the appearance effect writes accent/density/motion tokens to `<html>`.
+3. `hydrateServers/Player/History()` — nanostores read from the snapshot synchronously.
+4. `restoreQueryCache` + `attachQueryPersister` — TanStack Query cache is serialized into the same `kv` table.
+5. `initDiscordPresence` + `installNowPlayingBridge` — wire side-effects; Discord presence also pushes `setDiscordPrefs` to bun on boot so runtime gating matches the stored preference.
 
-Writes go through `src/mainview/lib/persistence.ts`, which debounces `kvSet` (200ms per key) and fires server/history mutations as fire-and-forget RPC calls. If you add persistent state, prefer the `kv` bucket unless you need ordered rows.
+Writes go through `src/mainview/lib/persistence.ts`, which debounces `kvSet` (200ms per key) and fires server/history mutations as fire-and-forget RPC calls. If you add persistent state, prefer the `kv` bucket unless you need ordered rows. User-facing preferences (accent, density, audio backend, stream quality, Discord toggles, …) all live inside the single `preferences` KV key via `src/mainview/stores/preferences.ts` — add new fields to the `Preferences` type there rather than minting new KV keys.
 
 ### Data layer: TanStack Solid Query, server-scoped keys
 

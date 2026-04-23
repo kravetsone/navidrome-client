@@ -1,4 +1,5 @@
-import { BrowserView, BrowserWindow, Updater } from "electrobun/bun";
+import { BrowserView, BrowserWindow, Updater, Utils } from "electrobun/bun";
+import { spawn } from "bun";
 import { installApplicationMenu } from "./menu";
 import { discordPresence } from "./discord-presence";
 import { persistence } from "./db";
@@ -8,7 +9,18 @@ import {
 	installTray,
 	setNowPlayingMeta,
 } from "./tray";
-import type { AppRPCSchema, NowPlayingMeta } from "../shared/rpc-schema";
+import {
+	applyUpdateNow,
+	checkNow as checkForUpdateNow,
+	disposeUpdater,
+	getUpdaterState,
+	initUpdater,
+} from "./updater";
+import type {
+	AppRPCSchema,
+	DiscordRuntimePrefs,
+	NowPlayingMeta,
+} from "../shared/rpc-schema";
 import type { PresencePayload } from "../shared/discord";
 import { HISTORY_LIMIT } from "../shared/persistence";
 
@@ -70,6 +82,22 @@ const rpc = BrowserView.defineRPC<AppRPCSchema>({
 			setNowPlayingMeta: (meta: NowPlayingMeta | null) => {
 				setNowPlayingMeta(meta);
 			},
+			updaterGetState: () => getUpdaterState(),
+			updaterCheckNow: () => checkForUpdateNow(),
+			updaterApply: () => applyUpdateNow(),
+			setDiscordPrefs: (prefs: DiscordRuntimePrefs) => {
+				discordPresence.setRuntimePrefs(prefs);
+			},
+			openDataFolder: () => {
+				const path = Utils.paths.userData;
+				if (process.platform === "darwin") {
+					void spawn(["open", path]).exited;
+				} else if (process.platform === "win32") {
+					void spawn(["explorer", path]).exited;
+				} else {
+					void spawn(["xdg-open", path]).exited;
+				}
+			},
 		},
 	},
 });
@@ -91,10 +119,12 @@ const mainWindow = new BrowserWindow({
 discordPresence.start();
 installTray(mainWindow);
 installGlobalShortcuts(mainWindow);
+initUpdater(mainWindow);
 
 process.on("beforeExit", () => {
 	discordPresence.stop();
 	disposeIntegrations();
+	disposeUpdater();
 });
 
 console.log("Navidrome client started", mainWindow.id);

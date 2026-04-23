@@ -1,0 +1,30 @@
+/*
+ * Root attributes driven by the preferences store.
+ * - `data-density="compact"` → tighter spacing.
+ * - `data-reduce-motion="true"` → disables transitions/animations and the
+ *   ambient palette crossfade.
+ * - `data-ambient="off"` → hides the ambient radial gradient entirely.
+ */
+
+:root[data-density="compact"] {
+	--space-5: 12px;
+	--space-6: 16px;
+	--space-7: 20px;
+	--space-8: 24px;
+	--space-9: 32px;
+	--space-10: 40px;
+}
+
+:root[data-reduce-motion="true"],
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+	animation-duration: 0ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 0ms !important;
+	scroll-behavior: auto !important;
+}
+
+:root[data-reduce-motion="true"] {
+	transition: none !important;
+}

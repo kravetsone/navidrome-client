@@ -22,10 +22,22 @@ import { $queueServer } from "../../stores/servers";
 import { recordPlay } from "../../stores/history";
 import { notifyTrackEnded } from "../../stores/sleepTimer";
 import { clientFor } from "../queries/useActiveClient";
+import { $preferences } from "../../stores/preferences";
+import { resolveStreamParams } from "./stream-quality";
 
-const PRELOAD_THRESHOLD_SECONDS = 10;
 const SCROBBLE_SUBMIT_SECONDS = 240;
-const SCROBBLE_SUBMIT_RATIO = 0.5;
+
+function preloadThresholdSeconds(): number {
+	return $preferences.get().playback.preloadSeconds;
+}
+
+function scrobbleSubmitRatio(): number {
+	return $preferences.get().playback.scrobbleThresholdPercent / 100;
+}
+
+function buildStreamUrl(client: SubsonicClient, songId: string): string {
+	return client.streamUrl(songId, resolveStreamParams());
+}
 
 class AudioEngine {
 	private el: HTMLAudioElement | null = null;
@@ -284,7 +296,7 @@ class AudioEngine {
 		if (!server) return;
 		this.currentSongId = song.id;
 		const client = clientFor(server);
-		const url = client.streamUrl(song.id);
+		const url = buildStreamUrl(client, song.id);
 		this.el.src = url;
 		this.el.load();
 		$position.set(0);
@@ -308,7 +320,7 @@ class AudioEngine {
 		const duration = this.el.duration;
 		const position = this.el.currentTime;
 		if (!Number.isFinite(duration) || duration <= 0) return;
-		const halfway = duration * SCROBBLE_SUBMIT_RATIO;
+		const halfway = duration * scrobbleSubmitRatio();
 		if (position >= SCROBBLE_SUBMIT_SECONDS || position >= halfway) {
 			const songId = this.currentSongId;
 			if (!songId) return;
@@ -418,7 +430,7 @@ class AudioEngine {
 		if (!this.el) return;
 		const duration = this.el.duration;
 		if (!Number.isFinite(duration) || duration <= 0) return;
-		if (duration - this.el.currentTime > PRELOAD_THRESHOLD_SECONDS) return;
+		if (duration - this.el.currentTime > preloadThresholdSeconds()) return;
 
 		const nextUrl = this.resolveNextUrl();
 		if (!nextUrl || nextUrl === this.preloadedUrl) return;
@@ -443,7 +455,7 @@ class AudioEngine {
 		const server = $queueServer.get();
 		if (!server) return null;
 		const client = clientFor(server);
-		return client.streamUrl(q[nextIdx]!.id);
+		return buildStreamUrl(client, q[nextIdx]!.id);
 	}
 
 	private clearPreload() {

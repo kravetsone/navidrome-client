@@ -14,10 +14,14 @@ import type { Song } from "../subsonic";
 import { clientFor } from "../queries/useActiveClient";
 import { queryClient } from "../queries/client";
 import { qk } from "../queries/keys";
+import { $preferences } from "../../stores/preferences";
 
 const PREFETCH_SIZE = 20;
-const TARGET_LOOKAHEAD = 5;
 const RADIO_STALE_MS = 24 * 60 * 60 * 1000;
+
+function targetLookahead(): number {
+	return $preferences.get().playback.radioLookahead;
+}
 
 let installed = false;
 let inFlight = false;
@@ -73,7 +77,7 @@ async function topUp() {
 	if (idx < 0 || q.length === 0) return;
 
 	const remaining = q.length - 1 - idx;
-	if (remaining >= TARGET_LOOKAHEAD) return;
+	if (remaining >= targetLookahead()) return;
 
 	const seed = pickSeedSong();
 	if (!seed) return;

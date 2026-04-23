@@ -1,9 +1,17 @@
 import { Client as DiscordClient } from "@xhayper/discord-rpc";
 import { DISCORD_CLIENT_ID, type PresencePayload } from "../shared/discord";
+import type { DiscordRuntimePrefs } from "../shared/rpc-schema";
 import { getCoverArtUrl } from "./cover-art";
 
 const ACTIVITY_TYPE_LISTENING = 2;
 const RECONNECT_DELAY_MS = 15_000;
+
+const DEFAULT_RUNTIME_PREFS: DiscordRuntimePrefs = {
+	enabled: true,
+	showCoverArt: true,
+	showTimestamps: true,
+	clearWhenPaused: false,
+};
 
 class DiscordPresence {
 	private client: DiscordClient | null = null;
@@ -12,9 +20,27 @@ class DiscordPresence {
 	private pending: PresencePayload | null = null;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private flushSeq = 0;
+	private runtimePrefs: DiscordRuntimePrefs = { ...DEFAULT_RUNTIME_PREFS };
 
 	start() {
+		if (!this.runtimePrefs.enabled) return;
 		this.tryConnect();
+	}
+
+	setRuntimePrefs(prefs: DiscordRuntimePrefs) {
+		const wasEnabled = this.runtimePrefs.enabled;
+		this.runtimePrefs = { ...prefs };
+		if (!prefs.enabled) {
+			// Drop presence immediately when the user disables the feature. The
+			// socket is torn down too so Discord doesn't keep the client slot.
+			void this.stop();
+			return;
+		}
+		if (!wasEnabled && prefs.enabled) {
+			this.tryConnect();
+		}
+		// Re-publish with new flags (cover, timestamps) applied.
+		if (this.ready) this.flush();
 	}
 
 	async stop() {
@@ -35,6 +61,11 @@ class DiscordPresence {
 	}
 
 	setActivity(payload: PresencePayload) {
+		if (!this.runtimePrefs.enabled) return;
+		if (this.runtimePrefs.clearWhenPaused && !payload.isPlaying) {
+			this.clear();
+			return;
+		}
 		this.pending = payload;
 		if (this.ready) this.flush();
 	}
@@ -51,7 +82,9 @@ class DiscordPresence {
 		const seq = ++this.flushSeq;
 		const p = this.pending;
 
-		const coverUrl = await getCoverArtUrl(p.artist, p.album);
+		const coverUrl = this.runtimePrefs.showCoverArt
+			? await getCoverArtUrl(p.artist, p.album)
+			: null;
 		if (seq !== this.flushSeq) return;
 		if (!this.ready || !this.client || !this.pending) return;
 
@@ -66,7 +99,7 @@ class DiscordPresence {
 		if (coverUrl) {
 			activity.largeImageUrl = coverUrl;
 		}
-		if (p.isPlaying && p.duration && p.duration > 0) {
+		if (this.runtimePrefs.showTimestamps && p.isPlaying && p.duration && p.duration > 0) {
 			const now = Date.now();
 			const pos = Math.max(0, Math.min(p.position ?? 0, p.duration));
 			activity.startTimestamp = now - pos * 1000;
