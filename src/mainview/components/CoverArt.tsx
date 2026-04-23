@@ -1,4 +1,10 @@
-import { Show, createMemo, createSignal } from "solid-js";
+import {
+	Show,
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+} from "solid-js";
 import { gradientFor, initialsFor } from "../lib/color";
 import styles from "./CoverArt.module.css";
 
@@ -11,11 +17,8 @@ interface CoverArtProps {
 	class?: string;
 }
 
-// URLs we've painted at least once this session. Lets re-mounts (or a later
-// render of the same URL at a different size) skip the fade-in so navigation
-// feels instant.
 const loadedUrls = new Set<string>();
-const loadedByLogicalKey = new Set<string>();
+const loadedByLogicalKey = new Map<string, string>();
 
 function logicalKey(url: string): string {
 	try {
@@ -29,13 +32,17 @@ function logicalKey(url: string): string {
 
 function recordLoaded(url: string) {
 	loadedUrls.add(url);
-	loadedByLogicalKey.add(logicalKey(url));
+	loadedByLogicalKey.set(logicalKey(url), url);
 }
 
-function isCached(url: string | undefined): boolean {
-	if (!url) return false;
-	if (loadedUrls.has(url)) return true;
-	return loadedByLogicalKey.has(logicalKey(url));
+// Any differently-sized variant of this URL we've already painted this session.
+// Used as an instant poster when navigating from a grid (240px) into a detail
+// view (600px) so the user sees the cached low-res cover immediately.
+function posterFor(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	if (loadedUrls.has(url)) return url;
+	const cached = loadedByLogicalKey.get(logicalKey(url));
+	return cached && cached !== url ? cached : undefined;
 }
 
 export function CoverArt(props: CoverArtProps) {
@@ -49,18 +56,70 @@ export function CoverArt(props: CoverArtProps) {
 		return candidates().find((c) => !bad.has(c));
 	});
 
-	const handleLoad = () => {
+	const [displayed, setDisplayed] = createSignal<string | undefined>(
+		(() => {
+			const t = target();
+			if (!t) return undefined;
+			if (loadedUrls.has(t)) return t;
+			return posterFor(t);
+		})(),
+	);
+
+	createEffect(() => {
 		const t = target();
-		if (t) recordLoaded(t);
+		if (!t) {
+			setDisplayed(undefined);
+			return;
+		}
+		if (loadedUrls.has(t)) {
+			setDisplayed(t);
+			return;
+		}
+		const poster = posterFor(t);
+		if (!poster) {
+			// No cached variant to bridge with — skip the offscreen Image()
+			// preloader and let the visible <img loading="lazy"> fetch it
+			// natively. Keeps dense grids (e.g. /artists) cheap on mount.
+			setDisplayed(t);
+			return;
+		}
+		// Paint poster instantly, preload target offscreen, swap when ready.
+		setDisplayed(poster);
+		const img = new Image();
+		let cancelled = false;
+		img.decoding = "async";
+		img.onload = () => {
+			if (cancelled) return;
+			recordLoaded(t);
+			setDisplayed(t);
+		};
+		img.onerror = () => {
+			if (cancelled) return;
+			setFailed((prev) => {
+				if (prev.has(t)) return prev;
+				const next = new Set(prev);
+				next.add(t);
+				return next;
+			});
+		};
+		img.src = t;
+		onCleanup(() => {
+			cancelled = true;
+		});
+	});
+
+	const handleLoad = () => {
+		const d = displayed();
+		if (d) recordLoaded(d);
 	};
 
 	const handleError = () => {
-		const t = target();
-		if (!t) return;
+		const d = displayed();
+		if (!d) return;
 		setFailed((prev) => {
-			if (prev.has(t)) return prev;
+			if (prev.has(d)) return prev;
 			const next = new Set(prev);
-			next.add(t);
+			next.add(d);
 			return next;
 		});
 	};
@@ -77,21 +136,26 @@ export function CoverArt(props: CoverArtProps) {
 					: {}),
 			}}
 		>
-			<Show when={target()}>
+			<Show when={displayed()}>
 				<img
 					class={styles.image}
-					src={target()!}
+					src={displayed()!}
 					alt={props.name}
 					loading="lazy"
 					decoding="async"
 					draggable={false}
 					onLoad={handleLoad}
 					onError={handleError}
-					data-instant={isCached(target()) ? "true" : "false"}
+					data-instant={
+						loadedUrls.has(displayed()!) ||
+						loadedByLogicalKey.has(logicalKey(displayed()!))
+							? "true"
+							: "false"
+					}
 				/>
 			</Show>
 
-			<Show when={!target()}>
+			<Show when={!displayed()}>
 				<span
 					class={styles.fallback}
 					style={{ "font-size": `${fontSize()}px` }}
