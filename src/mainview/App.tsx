@@ -1,5 +1,11 @@
 import { onMount } from "solid-js";
-import { Router, Route, type RouteSectionProps } from "@solidjs/router";
+import {
+	Router,
+	Route,
+	useLocation,
+	useNavigate,
+	type RouteSectionProps,
+} from "@solidjs/router";
 import { AppShell } from "./app/AppShell";
 import { ServerGuard } from "./app/ServerGuard";
 import { HomeView } from "./features/home/HomeView";
@@ -28,7 +34,14 @@ import {
 } from "./lib/queries/preload";
 
 function Root(props: RouteSectionProps) {
+	const location = useLocation();
+	const navigate = useNavigate();
 	onMount(() => {
+		// Cold-start URL is views://mainview/index.html → pathname is
+		// "/mainview/index.html", which matches no route. Normalize to "/".
+		if (location.pathname.endsWith(".html")) {
+			navigate("/", { replace: true });
+		}
 		if ($activeServerId.get()) void pingActive();
 	});
 	return (
