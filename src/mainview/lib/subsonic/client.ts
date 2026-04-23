@@ -230,6 +230,31 @@ export class SubsonicClient {
 		return resp.playlist;
 	}
 
+	async getStarred2(musicFolderId?: string): Promise<{
+		artist: Artist[];
+		album: Album[];
+		song: Song[];
+	}> {
+		const resp = (await this.call("getStarred2", {
+			musicFolderId: musicFolderId ?? null,
+		})) as SubsonicResponse & {
+			starred2?: { artist?: Artist[]; album?: Album[]; song?: Song[] };
+		};
+		const s = resp.starred2 ?? {};
+		return {
+			artist: s.artist ?? [],
+			album: s.album ?? [],
+			song: s.song ?? [],
+		};
+	}
+
+	async getGenres(): Promise<Array<{ value: string; songCount?: number; albumCount?: number }>> {
+		const resp = (await this.call("getGenres")) as SubsonicResponse & {
+			genres?: { genre?: Array<{ value: string; songCount?: number; albumCount?: number }> };
+		};
+		return resp.genres?.genre ?? [];
+	}
+
 	async createPlaylist(options: {
 		name: string;
 		songIds?: string[];

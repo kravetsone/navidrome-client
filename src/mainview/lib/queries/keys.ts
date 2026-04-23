@@ -28,4 +28,10 @@ export const qk = {
 
 	search: (serverId: string, query: string) =>
 		[...qk.server(serverId), "search", query] as const,
+
+	starred: (serverId: string) =>
+		[...qk.server(serverId), "starred"] as const,
+
+	genres: (serverId: string) =>
+		[...qk.server(serverId), "genres"] as const,
 };

@@ -17,6 +17,7 @@ import {
 import type { Song } from "../subsonic";
 import type { SubsonicClient } from "../subsonic/client";
 import { $activeServer } from "../../stores/servers";
+import { recordPlay } from "../../stores/history";
 import { clientFor } from "../queries/useActiveClient";
 
 const PRELOAD_THRESHOLD_SECONDS = 10;
@@ -137,6 +138,7 @@ class AudioEngine {
 		this.clearPreload();
 		this.scrobbleSubmitted = false;
 		this.sendScrobble(client, song.id, false);
+		recordPlay(song);
 		this.updateMediaSessionMetadata(song, client);
 
 		if ($isPlaying.get()) {

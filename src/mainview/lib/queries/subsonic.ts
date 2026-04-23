@@ -73,6 +73,22 @@ export function playlistQuery({ client, serverId }: ClientCtx, id: string) {
 	});
 }
 
+export function starredQuery({ client, serverId }: ClientCtx) {
+	return queryOptions({
+		queryKey: qk.starred(serverId),
+		queryFn: () => client.getStarred2(),
+		staleTime: 2 * 60 * 1000,
+	});
+}
+
+export function genresQuery({ client, serverId }: ClientCtx) {
+	return queryOptions({
+		queryKey: qk.genres(serverId),
+		queryFn: () => client.getGenres(),
+		staleTime: TEN_MIN,
+	});
+}
+
 export function searchQuery(
 	ctx: ClientCtx | null,
 	query: string,
