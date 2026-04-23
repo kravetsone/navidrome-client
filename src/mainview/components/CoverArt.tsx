@@ -1,4 +1,4 @@
-import { createMemo, createSignal, Show } from "solid-js";
+import { createMemo, createSignal, onMount, Show } from "solid-js";
 import { gradientFor, initialsFor } from "../lib/color";
 import styles from "./CoverArt.module.css";
 
@@ -11,15 +11,35 @@ interface CoverArtProps {
 	class?: string;
 }
 
-export function CoverArt(props: CoverArtProps) {
-	const [loaded, setLoaded] = createSignal(false);
-	const [tier, setTier] = createSignal(0);
+// Tracks URLs that finished loading at least once in this session. Lets us
+// skip the fade-in on remount so re-entering a page doesn't flash skeletons
+// for images the browser already has in cache.
+const loadedSources = new Set<string>();
 
+export function CoverArt(props: CoverArtProps) {
 	const sources = createMemo(() =>
 		[props.src, props.fallbackSrc].filter((s): s is string => Boolean(s)),
 	);
 	const currentSrc = () => sources()[tier()];
+	const [tier, setTier] = createSignal(0);
+	const [loaded, setLoaded] = createSignal(
+		(() => {
+			const s = sources()[0];
+			return s ? loadedSources.has(s) : false;
+		})(),
+	);
+
 	const fontSize = () => Math.max(14, (props.size ?? 180) * 0.28);
+
+	let imgEl: HTMLImageElement | undefined;
+	onMount(() => {
+		if (!imgEl || loaded()) return;
+		if (imgEl.complete && imgEl.naturalWidth > 0) {
+			const src = imgEl.currentSrc || imgEl.src;
+			if (src) loadedSources.add(src);
+			setLoaded(true);
+		}
+	});
 
 	return (
 		<div
@@ -35,13 +55,17 @@ export function CoverArt(props: CoverArtProps) {
 			<Show when={currentSrc()} keyed>
 				{(src) => (
 					<img
+						ref={imgEl}
 						class={styles.image}
 						src={src}
 						alt={props.name}
 						data-loaded={loaded()}
 						loading="lazy"
 						draggable={false}
-						onLoad={() => setLoaded(true)}
+						onLoad={() => {
+							loadedSources.add(src);
+							setLoaded(true);
+						}}
 						onError={() => {
 							setLoaded(false);
 							setTier((t) => t + 1);
