@@ -13,6 +13,7 @@ bun run dev:hmr     # Vite dev server on :5173 + electrobun dev, true HMR
 bun run start       # one-shot vite build + electrobun dev (no watch)
 bun run build       # production: vite build → electrobun build
 bun run build:canary | build:release   # channeled builds for the updater
+bun run test:updater                    # end-to-end auto-updater harness (macOS)
 bunx tsc --noEmit   # type-check
 ```
 
@@ -34,7 +35,15 @@ src/shared/    RPC schema + persistence/discord payload types. Types-only — im
 
 `src/shared/rpc-schema.ts` defines `AppRPCSchema` with two halves (`bun` and `webview`), each with typed `requests`. `src/bun/index.ts` calls `BrowserView.defineRPC<AppRPCSchema>({ handlers: { requests: {...} } })`; `src/mainview/lib/electroview.ts` mirrors it with `Electroview.defineRPC<AppRPCSchema>`. When adding cross-process calls, edit the schema first, then implement both handler sides — the types will enforce the rest.
 
-Current request surface: persistence snapshot/mutations, Discord presence (`setDiscordPresence`/`clearDiscordPresence`/`setDiscordPrefs`), now-playing meta (tray title), `playerControl` (tray → webview play/pause/next/prev), and `openDataFolder` (Advanced settings → Finder).
+Current request surface: persistence snapshot/mutations, Discord presence (`setDiscordPresence`/`clearDiscordPresence`/`setDiscordPrefs`), now-playing meta (tray title), `playerControl` (tray → webview play/pause/next/prev), `openDataFolder` (Advanced settings → Finder), and the updater bridge (`updaterGetState`/`updaterCheckNow`/`updaterApply` webview→bun, `updaterState` push bun→webview).
+
+### Auto-updater
+
+`src/bun/updater.ts` drives `electrobun/bun`'s `Updater`: 15s after launch it runs `checkForUpdate → downloadUpdate`, then every 6h. State (`idle | checking | downloading | ready | error`) is pushed to the webview via the `updaterState` RPC message. `src/mainview/stores/updater.ts` holds the mirrored nanostore and a per-version dismissal flag; `src/mainview/features/updater/UpdateBanner.tsx` renders the glass popup above the PlayerBar, with a Restart button when state is `ready`. Dev channel short-circuits — Electrobun's updater returns `no-update` immediately so the banner never appears in `bun run dev`.
+
+The updater endpoint is `electrobun.config.ts` → `release.baseUrl` (not `updates.url` — Electrobun silently ignores that key and bakes an empty baseUrl into `version.json`). Overridable at build time via `ELECTROBUN_BASE_URL`. Timing overrides: `UPDATER_STARTUP_DELAY_MS`, `UPDATER_CHECK_INTERVAL_MS`.
+
+`scripts/test-updater.ts` (invoked via `bun run test:updater`) is the end-to-end harness: it builds the current version as the "installed" app into `/tmp/navidrome-updater-test/installed/`, bumps the patch, builds that as the "update", and serves the resulting `*-update.json` + `*.tar.zst` over `http://localhost:8787`. Both builds are produced with `ELECTROBUN_BASE_URL=http://localhost:8787`, so the installed app's bundled `version.json` points at the harness. Launch the installed `.app` (the script prints the path), wait for the tick, and the full download→ready→Restart flow exercises against a real tarball and real hash — no GitHub involved.
 
 ### Persistence: SQLite lives in Bun, mirrored to nanostores in the webview
 

@@ -17,22 +17,31 @@ import {
 	createSortable,
 	type DragEvent as SortableDragEvent,
 } from "@thisbeyond/solid-dnd";
-import { ChevronDown, GripVertical, Radio, X } from "lucide-solid";
+import { ChevronDown, GripVertical, Radio, Trash2, X } from "lucide-solid";
 import {
-	$queue,
-	$currentIndex,
+	$contextIndex,
+	$contextQueue,
+	$currentSong,
+	$hasQueue,
 	$queueOpen,
 	$queueSources,
+	$shuffle,
+	$shuffleOrder,
 	$smartRadio,
+	$userQueue,
 	addToQueue,
+	clearQueue,
 	closeQueue,
-	insertIntoQueue,
-	jumpTo,
+	insertIntoUserQueue,
+	jumpToContext,
+	jumpToUserQueue,
 	playNextInQueue,
-	removeFromQueue,
-	reorderQueue,
+	removeFromContext,
+	removeFromUserQueue,
+	reorderUserQueue,
 	toggleSmartRadio,
 } from "../../stores/player";
+import { $playHistory } from "../../stores/history";
 import { $queueServer } from "../../stores/servers";
 import { clientFor } from "../../lib/queries/useActiveClient";
 import type { Song } from "../../lib/subsonic";
@@ -41,11 +50,8 @@ import styles from "./QueuePanel.module.css";
 
 const SONG_DRAG_MIME = "application/x-navidrome-song";
 
-interface RowEntry {
-	id: string;
-	song: Song;
-	queueIndex: number;
-}
+type UserRow = { kind: "user"; id: string; song: Song; index: number };
+type ContextRow = { kind: "context"; id: string; song: Song; index: number };
 
 function readDroppedSong(e: DragEvent): Song | null {
 	const data = e.dataTransfer?.getData(SONG_DRAG_MIME);
@@ -59,14 +65,6 @@ function readDroppedSong(e: DragEvent): Song | null {
 	}
 }
 
-function makeRows(songs: Song[], offset: number): RowEntry[] {
-	return songs.map((song, i) => ({
-		id: `${song.id}-${offset + i}`,
-		song,
-		queueIndex: offset + i,
-	}));
-}
-
 function formatDuration(seconds?: number): string {
 	if (!seconds || !Number.isFinite(seconds)) return "";
 	const s = Math.floor(seconds);
@@ -77,11 +75,17 @@ function formatDuration(seconds?: number): string {
 
 export function QueuePanel() {
 	const open = useStore($queueOpen);
-	const queue = useStore($queue);
-	const currentIndex = useStore($currentIndex);
+	const currentSong = useStore($currentSong);
+	const contextQueue = useStore($contextQueue);
+	const contextIndex = useStore($contextIndex);
+	const userQueue = useStore($userQueue);
+	const shuffle = useStore($shuffle);
+	const shuffleOrder = useStore($shuffleOrder);
+	const hasQueue = useStore($hasQueue);
 	const activeServer = useStore($queueServer);
 	const queueSources = useStore($queueSources);
 	const smartRadio = useStore($smartRadio);
+	const playHistory = useStore($playHistory);
 	const [historyOpen, setHistoryOpen] = createSignal(false);
 	const [dropActive, setDropActive] = createSignal(false);
 	const [rowDropTarget, setRowDropTarget] = createSignal<{
@@ -90,24 +94,60 @@ export function QueuePanel() {
 	} | null>(null);
 	let dragDepth = 0;
 
-	const currentSong = createMemo<Song | null>(() => {
-		const q = queue();
-		const i = currentIndex();
-		return i >= 0 && i < q.length ? q[i]! : null;
+	const userRows = createMemo<UserRow[]>(() =>
+		userQueue().map((song, i) => ({
+			kind: "user",
+			id: `user-${song.id}-${i}`,
+			song,
+			index: i,
+		})),
+	);
+
+	const contextRows = createMemo<ContextRow[]>(() => {
+		const ctx = contextQueue();
+		const idx = contextIndex();
+		if (shuffle()) {
+			// Render the actual shuffled upcoming order so the UI matches what
+			// playback will do, not the array's natural order.
+			return shuffleOrder()
+				.map((i, row) => {
+					const song = ctx[i];
+					if (!song) return null;
+					return {
+						kind: "context" as const,
+						id: `ctx-${song.id}-${i}-${row}`,
+						song,
+						index: i,
+					};
+				})
+				.filter((r): r is ContextRow => r !== null);
+		}
+		if (idx < 0) {
+			return ctx.map((song, i) => ({
+				kind: "context",
+				id: `ctx-${song.id}-${i}`,
+				song,
+				index: i,
+			}));
+		}
+		const upcoming: ContextRow[] = [];
+		for (let i = idx + 1; i < ctx.length; i++) {
+			upcoming.push({
+				kind: "context",
+				id: `ctx-${ctx[i]!.id}-${i}`,
+				song: ctx[i]!,
+				index: i,
+			});
+		}
+		return upcoming;
 	});
 
-	const upNextRows = createMemo<RowEntry[]>(() => {
-		const q = queue();
-		const i = currentIndex();
-		if (i < 0) return makeRows(q, 0);
-		return makeRows(q.slice(i + 1), i + 1);
-	});
-
-	const historyRows = createMemo<RowEntry[]>(() => {
-		const q = queue();
-		const i = currentIndex();
-		if (i <= 0) return [];
-		return makeRows(q.slice(0, i), 0).reverse();
+	const recentHistory = createMemo(() => {
+		// Drop the current song if it's already on top of history.
+		const cur = currentSong();
+		const hist = playHistory();
+		if (cur && hist[0]?.songId === cur.id) return hist.slice(1, 26);
+		return hist.slice(0, 25);
 	});
 
 	const coverFor = (song: Song): string | undefined => {
@@ -128,16 +168,18 @@ export function QueuePanel() {
 		onCleanup(() => window.removeEventListener("keydown", onKey));
 	});
 
-	const handleDragEnd = (e: SortableDragEvent) => {
+	// ─── drag & drop ────────────────────────────────────────────────────────
+
+	const handleSortEnd = (e: SortableDragEvent) => {
 		if (!e.draggable || !e.droppable) return;
 		const fromId = String(e.draggable.id);
 		const toId = String(e.droppable.id);
 		if (fromId === toId) return;
-		const rows = upNextRows();
-		const from = rows.find((r) => r.id === fromId)?.queueIndex;
-		const to = rows.find((r) => r.id === toId)?.queueIndex;
+		const rows = userRows();
+		const from = rows.find((r) => r.id === fromId)?.index;
+		const to = rows.find((r) => r.id === toId)?.index;
 		if (from === undefined || to === undefined) return;
-		reorderQueue(from, to);
+		reorderUserQueue(from, to);
 	};
 
 	const handleNativeDragOver = (e: DragEvent) => {
@@ -173,7 +215,7 @@ export function QueuePanel() {
 		else addToQueue(song);
 	};
 
-	const handleRowDragOver = (rowId: string) => (e: DragEvent) => {
+	const handleUserRowDragOver = (rowId: string) => (e: DragEvent) => {
 		if (!e.dataTransfer?.types.includes(SONG_DRAG_MIME)) return;
 		e.preventDefault();
 		e.stopPropagation();
@@ -186,17 +228,17 @@ export function QueuePanel() {
 		}
 	};
 
-	const handleRowDrop = (queueIndex: number) => (e: DragEvent) => {
+	const handleUserRowDrop = (index: number) => (e: DragEvent) => {
 		const song = readDroppedSong(e);
 		if (!song) return;
 		e.preventDefault();
 		e.stopPropagation();
 		const target = rowDropTarget();
-		const insertAt = target?.above ? queueIndex : queueIndex + 1;
+		const insertAt = target?.above ? index : index + 1;
 		dragDepth = 0;
 		setDropActive(false);
 		setRowDropTarget(null);
-		insertIntoQueue(song, insertAt);
+		insertIntoUserQueue(song, insertAt);
 	};
 
 	return (
@@ -222,9 +264,7 @@ export function QueuePanel() {
 								data-active={smartRadio()}
 								aria-pressed={smartRadio()}
 								aria-label={
-									smartRadio()
-										? "Turn off smart radio"
-										: "Turn on smart radio"
+									smartRadio() ? "Turn off smart radio" : "Turn on smart radio"
 								}
 								title={
 									smartRadio()
@@ -234,6 +274,19 @@ export function QueuePanel() {
 							>
 								<Radio size={16} />
 							</button>
+							<Show when={hasQueue()}>
+								<button
+									type="button"
+									class={styles.radioBtn}
+									onClick={() => {
+										if (confirm("Clear the entire queue?")) clearQueue();
+									}}
+									aria-label="Clear queue"
+									title="Clear queue"
+								>
+									<Trash2 size={16} />
+								</button>
+							</Show>
 							<button
 								type="button"
 								class={styles.closeBtn}
@@ -257,44 +310,32 @@ export function QueuePanel() {
 									<span class={styles.sectionLabel}>Now playing</span>
 									<NowPlayingRow song={song()} cover={coverFor(song())} />
 									<Show when={dropActive()}>
-										<span class={styles.dropHint}>
-											Drop to play next
-										</span>
+										<span class={styles.dropHint}>Drop to play next</span>
 									</Show>
 								</section>
 							)}
 						</Show>
 
-						<Show
-							when={upNextRows().length > 0}
-							fallback={
-								<Show when={!currentSong()}>
-									<EmptyState />
-								</Show>
-							}
-						>
+						<Show when={userRows().length > 0}>
 							<section class={styles.section}>
 								<span class={styles.sectionLabel}>
-									Up next · {upNextRows().length}
+									Next in queue · {userRows().length}
 								</span>
 								<DragDropProvider
 									collisionDetector={closestCenter}
-									onDragEnd={handleDragEnd}
+									onDragEnd={handleSortEnd}
 								>
 									<DragDropSensors />
-									<SortableProvider ids={upNextRows().map((r) => r.id)}>
+									<SortableProvider ids={userRows().map((r) => r.id)}>
 										<ol class={styles.list}>
-											<For each={upNextRows()}>
+											<For each={userRows()}>
 												{(row, index) => {
 													const target = () => rowDropTarget();
 													return (
-														<SortableRow
+														<SortableUserRow
 															row={row}
 															cover={coverFor(row.song)}
 															staggerIndex={Math.min(index(), 15)}
-															isRadio={
-																queueSources()[row.song.id] === "radio"
-															}
 															dropAbove={
 																target()?.rowId === row.id &&
 																target()?.above === true
@@ -303,8 +344,8 @@ export function QueuePanel() {
 																target()?.rowId === row.id &&
 																target()?.above === false
 															}
-															onNativeDragOver={handleRowDragOver(row.id)}
-															onNativeDrop={handleRowDrop(row.queueIndex)}
+															onNativeDragOver={handleUserRowDragOver(row.id)}
+															onNativeDrop={handleUserRowDrop(row.index)}
 														/>
 													);
 												}}
@@ -314,7 +355,7 @@ export function QueuePanel() {
 									<DragOverlay>
 										{(draggable) => {
 											const rowId = String(draggable?.id ?? "");
-											const row = upNextRows().find((r) => r.id === rowId);
+											const row = userRows().find((r) => r.id === rowId);
 											return row ? (
 												<DragGhost
 													song={row.song}
@@ -327,7 +368,35 @@ export function QueuePanel() {
 							</section>
 						</Show>
 
-						<Show when={historyRows().length > 0}>
+						<Show when={contextRows().length > 0}>
+							<section class={styles.section}>
+								<span class={styles.sectionLabel}>
+									Next up · {contextRows().length}
+								</span>
+								<ol class={styles.list}>
+									<For each={contextRows()}>
+										{(row, index) => (
+											<StaticRow
+												song={row.song}
+												cover={coverFor(row.song)}
+												staggerIndex={Math.min(index(), 15)}
+												isRadio={
+													queueSources()[row.song.id] === "radio"
+												}
+												onPlay={() => jumpToContext(row.index)}
+												onRemove={() => removeFromContext(row.index)}
+											/>
+										)}
+									</For>
+								</ol>
+							</section>
+						</Show>
+
+						<Show when={!currentSong() && userRows().length === 0 && contextRows().length === 0}>
+							<EmptyState />
+						</Show>
+
+						<Show when={recentHistory().length > 0}>
 							<section class={styles.section}>
 								<button
 									type="button"
@@ -341,19 +410,19 @@ export function QueuePanel() {
 										data-open={historyOpen()}
 									/>
 									<span class={styles.sectionLabel}>
-										History · {historyRows().length}
+										Recently played · {recentHistory().length}
 									</span>
 								</button>
 								<Show when={historyOpen()}>
 									<ol class={styles.list}>
-										<For each={historyRows()}>
-											{(row, index) => (
+										<For each={recentHistory()}>
+											{(entry, index) => (
 												<StaticRow
-													song={row.song}
-													cover={coverFor(row.song)}
+													song={entry.song}
+													cover={coverFor(entry.song)}
 													staggerIndex={Math.min(index(), 15)}
-													onPlay={() => jumpTo(row.queueIndex)}
-													onRemove={() => removeFromQueue(row.queueIndex)}
+													onPlay={() => playNextInQueue(entry.song)}
+													readonly
 												/>
 											)}
 										</For>
@@ -390,11 +459,10 @@ function NowPlayingRow(props: { song: Song; cover?: string }) {
 	);
 }
 
-function SortableRow(props: {
-	row: RowEntry;
+function SortableUserRow(props: {
+	row: UserRow;
 	cover?: string;
 	staggerIndex?: number;
-	isRadio?: boolean;
 	dropAbove?: boolean;
 	dropBelow?: boolean;
 	onNativeDragOver?: (e: DragEvent) => void;
@@ -406,7 +474,6 @@ function SortableRow(props: {
 			ref={sortable.ref}
 			class={styles.row}
 			data-dragging={sortable.isActiveDraggable}
-			data-radio={props.isRadio ? "true" : undefined}
 			data-drop-above={props.dropAbove ? "true" : undefined}
 			data-drop-below={props.dropBelow ? "true" : undefined}
 			style={{
@@ -416,7 +483,7 @@ function SortableRow(props: {
 					: undefined,
 				transition: sortable.transform ? "transform 200ms ease" : undefined,
 			}}
-			onDblClick={() => jumpTo(props.row.queueIndex)}
+			onDblClick={() => jumpToUserQueue(props.row.index)}
 			onDragOver={props.onNativeDragOver}
 			onDrop={props.onNativeDrop}
 		>
@@ -434,13 +501,11 @@ function SortableRow(props: {
 				size={40}
 				class={styles.cover}
 			/>
-			<div class={styles.text} onClick={() => jumpTo(props.row.queueIndex)}>
-				<span class={styles.songTitle}>
-					<Show when={props.isRadio}>
-						<Radio size={11} class={styles.radioMark} aria-hidden="true" />
-					</Show>
-					{props.row.song.title}
-				</span>
+			<div
+				class={styles.text}
+				onClick={() => jumpToUserQueue(props.row.index)}
+			>
+				<span class={styles.songTitle}>{props.row.song.title}</span>
 				<Show when={props.row.song.artist}>
 					<span class={styles.songArtist}>{props.row.song.artist}</span>
 				</Show>
@@ -452,7 +517,7 @@ function SortableRow(props: {
 				type="button"
 				class={styles.removeBtn}
 				aria-label="Remove from queue"
-				onClick={() => removeFromQueue(props.row.queueIndex)}
+				onClick={() => removeFromUserQueue(props.row.index)}
 			>
 				<X size={14} />
 			</button>
@@ -464,14 +529,20 @@ function StaticRow(props: {
 	song: Song;
 	cover?: string;
 	staggerIndex?: number;
+	isRadio?: boolean;
+	readonly?: boolean;
 	onPlay: () => void;
-	onRemove: () => void;
+	onRemove?: () => void;
 }) {
+	const hasRemove = () => Boolean(props.onRemove) && !props.readonly;
 	return (
 		<li
 			class={styles.row}
-			data-history
+			data-static="true"
+			data-no-remove={hasRemove() ? undefined : "true"}
+			data-radio={props.isRadio ? "true" : undefined}
 			style={{ "--i": props.staggerIndex ?? 0 }}
+			onClick={props.onPlay}
 		>
 			<CoverArt
 				src={props.cover}
@@ -479,8 +550,13 @@ function StaticRow(props: {
 				size={40}
 				class={styles.cover}
 			/>
-			<div class={styles.text} onClick={props.onPlay}>
-				<span class={styles.songTitle}>{props.song.title}</span>
+			<div class={styles.text}>
+				<span class={styles.songTitle}>
+					<Show when={props.isRadio}>
+						<Radio size={11} class={styles.radioMark} aria-hidden="true" />
+					</Show>
+					{props.song.title}
+				</span>
 				<Show when={props.song.artist}>
 					<span class={styles.songArtist}>{props.song.artist}</span>
 				</Show>
@@ -488,14 +564,19 @@ function StaticRow(props: {
 			<span class={styles.duration}>
 				{formatDuration(props.song.duration)}
 			</span>
-			<button
-				type="button"
-				class={styles.removeBtn}
-				aria-label="Remove from queue"
-				onClick={props.onRemove}
-			>
-				<X size={14} />
-			</button>
+			<Show when={hasRemove()}>
+				<button
+					type="button"
+					class={styles.removeBtn}
+					aria-label="Remove from queue"
+					onClick={(e) => {
+						e.stopPropagation();
+						props.onRemove?.();
+					}}
+				>
+					<X size={14} />
+				</button>
+			</Show>
 		</li>
 	);
 }

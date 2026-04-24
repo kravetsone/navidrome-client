@@ -74,10 +74,9 @@ export function draftToConfig(draft: ProbeDraft, caps: ServerCaps, name?: string
 }
 
 function deriveName(url: string, username: string): string {
-	try {
-		const u = new URL(url);
-		return `${username}@${u.hostname}`;
-	} catch {
-		return username;
-	}
+	// Extract the host from the raw input so IDN hosts (e.g. навдромпобеда.рф)
+	// stay in their original script — `new URL(url).hostname` would punycode
+	// them to `xn--...`, which is ugly in the server list.
+	const m = url.match(/^https?:\/\/([^/:?#]+)/i);
+	return m ? `${username}@${m[1]}` : username;
 }

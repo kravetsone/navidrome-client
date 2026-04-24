@@ -56,6 +56,8 @@ function formatTime(seconds: number): string {
 	return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
+const SEEK_DRAG_THRESHOLD_PX = 4;
+
 export function NowPlayingView() {
 	const open = useStore($nowPlayingOpen);
 	const song = useStore($currentSong);
@@ -180,11 +182,19 @@ export function NowPlayingView() {
 		if (totalSeconds() <= 0) return;
 		const bar = e.currentTarget as HTMLElement;
 		const rect = bar.getBoundingClientRect();
-		seekFromEvent(e, rect);
-		const onMove = (me: MouseEvent) => seekFromEvent(me, rect);
-		const onUp = () => {
+		const startX = e.clientX;
+		let dragged = false;
+
+		const onMove = (me: MouseEvent) => {
+			if (!dragged && Math.abs(me.clientX - startX) < SEEK_DRAG_THRESHOLD_PX) return;
+			dragged = true;
+			seekFromEvent(me, rect);
+		};
+		const onUp = (me: MouseEvent) => {
 			window.removeEventListener("mousemove", onMove);
 			window.removeEventListener("mouseup", onUp);
+			if (dragged) seekFromEvent(me, rect);
+			else seekFromEvent(e, rect);
 		};
 		window.addEventListener("mousemove", onMove);
 		window.addEventListener("mouseup", onUp);

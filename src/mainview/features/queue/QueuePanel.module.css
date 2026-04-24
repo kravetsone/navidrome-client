@@ -172,6 +172,15 @@
 	animation-delay: calc(var(--i, 0) * 22ms);
 }
 
+/* Static rows (context upcoming + history) have no drag handle, so the
+   20px handle column would otherwise steal the space for the cover. */
+.row[data-static="true"] {
+	grid-template-columns: 40px 1fr auto 28px;
+}
+.row[data-static="true"][data-no-remove="true"] {
+	grid-template-columns: 40px 1fr auto;
+}
+
 @keyframes rowIn {
 	from { opacity: 0; transform: translateY(-6px); }
 	to { opacity: 1; transform: translateY(0); }

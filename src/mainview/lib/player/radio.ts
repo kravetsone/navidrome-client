@@ -1,9 +1,10 @@
 import {
-	$currentIndex,
-	$queue,
+	$contextIndex,
+	$contextQueue,
 	$queueSources,
 	$repeat,
 	$smartRadio,
+	$userQueue,
 	appendRadioTracks,
 	getQueueGeneration,
 	hasUserTouchedQueue,
@@ -28,17 +29,17 @@ let inFlight = false;
 let lastSeedId: string | null = null;
 
 function pickSeedSong(): Song | null {
-	const q = $queue.get();
-	const idx = $currentIndex.get();
-	if (idx < 0 || idx >= q.length) return null;
+	const ctx = $contextQueue.get();
+	const idx = $contextIndex.get();
+	if (idx < 0 || idx >= ctx.length) return null;
 	const sources = $queueSources.get();
-	// Prefer the latest user-picked song in the remaining queue so radio sticks
-	// to the listener's intent rather than compounding on its own suggestions.
-	for (let i = q.length - 1; i >= idx; i--) {
-		const song = q[i]!;
+	// Prefer the latest user-picked song in the remaining context so radio
+	// sticks to the listener's intent rather than compounding on itself.
+	for (let i = ctx.length - 1; i >= idx; i--) {
+		const song = ctx[i]!;
 		if (sources[song.id] !== "radio") return song;
 	}
-	return q[idx] ?? null;
+	return ctx[idx] ?? null;
 }
 
 async function fetchSimilar(seedId: string): Promise<Song[]> {
@@ -58,7 +59,8 @@ async function fetchSimilar(seedId: string): Promise<Song[]> {
 
 function buildExclusions(): Set<string> {
 	const excluded = new Set<string>();
-	for (const s of $queue.get()) excluded.add(s.id);
+	for (const s of $contextQueue.get()) excluded.add(s.id);
+	for (const s of $userQueue.get()) excluded.add(s.id);
 	const hist = $playHistory.get();
 	const recentCutoff = Math.min(hist.length, 50);
 	for (let i = 0; i < recentCutoff; i++) excluded.add(hist[i]!.songId);
@@ -72,11 +74,14 @@ async function topUp() {
 	// Don't run on boot-time hydration — only after a real user queue action.
 	if (!hasUserTouchedQueue()) return;
 
-	const q = $queue.get();
-	const idx = $currentIndex.get();
-	if (idx < 0 || q.length === 0) return;
+	const ctx = $contextQueue.get();
+	const idx = $contextIndex.get();
+	if (idx < 0 || ctx.length === 0) return;
 
-	const remaining = q.length - 1 - idx;
+	// Upcoming = remaining context + queued user items (those play first and
+	// count toward lookahead).
+	const remainingCtx = Math.max(0, ctx.length - 1 - idx);
+	const remaining = remainingCtx + $userQueue.get().length;
 	if (remaining >= targetLookahead()) return;
 
 	const seed = pickSeedSong();
@@ -119,10 +124,13 @@ async function topUp() {
 export function installSmartRadio() {
 	if (installed) return;
 	installed = true;
-	$currentIndex.listen(() => {
+	$contextIndex.listen(() => {
 		void topUp();
 	});
-	$queue.listen(() => {
+	$contextQueue.listen(() => {
+		void topUp();
+	});
+	$userQueue.listen(() => {
 		void topUp();
 	});
 	$smartRadio.listen((on) => {

@@ -50,6 +50,11 @@ export function TrackList(props: TrackListProps) {
 
 	const rows = createMemo<Row[]>(() => {
 		const list = props.songs;
+		// eslint-disable-next-line no-console
+		console.info("[TrackList rows]", {
+			currentId: currentSong()?.id,
+			list: list.map((s) => ({ id: s.id, title: s.title })),
+		});
 		if (!props.groupByDisc) {
 			return list.map((song, index) => ({
 				kind: "song" as const,

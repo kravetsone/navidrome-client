@@ -37,7 +37,10 @@ import { clientFor } from "../lib/queries/useActiveClient";
 import { CoverArt } from "../components/CoverArt";
 import { HeartButton } from "../components/HeartButton";
 import { SongContextMenu } from "../components/menus";
+import { ContextMenu } from "../components/ContextMenu";
 import { SleepTimerButton } from "../components/SleepTimerButton";
+import { audioEngine } from "../lib/player/engine";
+import { pushToast } from "../stores/toast";
 import styles from "./PlayerBar.module.css";
 
 function formatTime(seconds: number): string {
@@ -47,6 +50,10 @@ function formatTime(seconds: number): string {
 	const r = s % 60;
 	return `${m}:${r.toString().padStart(2, "0")}`;
 }
+
+// Tolerates pointer jitter during a click so mousedown-then-release lands
+// on the mousedown position, not a drifted mouseup position.
+const DRAG_THRESHOLD_PX = 4;
 
 export function PlayerBar() {
 	const song = useStore($currentSong);
@@ -88,11 +95,22 @@ export function PlayerBar() {
 		if (totalSeconds() <= 0) return;
 		const bar = e.currentTarget as HTMLElement;
 		const rect = bar.getBoundingClientRect();
-		seekFromEvent(e, rect);
-		const onMove = (me: MouseEvent) => seekFromEvent(me, rect);
-		const onUp = () => {
+		const startX = e.clientX;
+		let dragged = false;
+
+		// Defer the mousedown seek until mouseup. If the pointer stays
+		// inside the drag threshold, apply it as a click (using startX);
+		// otherwise the move handler has already been scrubbing.
+		const onMove = (me: MouseEvent) => {
+			if (!dragged && Math.abs(me.clientX - startX) < DRAG_THRESHOLD_PX) return;
+			dragged = true;
+			seekFromEvent(me, rect);
+		};
+		const onUp = (me: MouseEvent) => {
 			window.removeEventListener("mousemove", onMove);
 			window.removeEventListener("mouseup", onUp);
+			if (dragged) seekFromEvent(me, rect);
+			else seekFromEvent(e, rect);
 		};
 		window.addEventListener("mousemove", onMove);
 		window.addEventListener("mouseup", onUp);
@@ -234,7 +252,34 @@ export function PlayerBar() {
 						</Show>
 					</button>
 				</div>
-				<div class={styles.progress}>
+				<ContextMenu
+					as="div"
+					triggerClass={styles.progress}
+					items={[
+						{
+							label: "Copy player debug info",
+							onSelect: () => {
+								const snap = audioEngine.getDebugSnapshot();
+								const text = JSON.stringify(snap, null, 2);
+								navigator.clipboard
+									?.writeText(text)
+									.then(() => pushToast("Debug info copied", { variant: "success", duration: 1800 }))
+									.catch(() => pushToast("Clipboard unavailable", { variant: "error" }));
+								// Also log so it's grabbable from DevTools.
+								// eslint-disable-next-line no-console
+								console.info("[player debug]", snap);
+							},
+						},
+						{
+							label: "Log player debug to console",
+							onSelect: () => {
+								// eslint-disable-next-line no-console
+								console.info("[player debug]", audioEngine.getDebugSnapshot());
+								pushToast("Logged to console", { variant: "info", duration: 1500 });
+							},
+						},
+					]}
+				>
 					<span class={styles.time}>{formatTime(position())}</span>
 					<div
 						class={styles.bar}
@@ -251,7 +296,7 @@ export function PlayerBar() {
 						/>
 					</div>
 					<span class={styles.time}>{formatTime(totalSeconds())}</span>
-				</div>
+				</ContextMenu>
 			</div>
 
 			<div class={styles.meta}>

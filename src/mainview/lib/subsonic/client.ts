@@ -606,10 +606,22 @@ export class SubsonicClient {
 		);
 	}
 
-	streamUrl(id: string, options: { maxBitRate?: number; format?: string } = {}): string {
+	streamUrl(
+		id: string,
+		options: { maxBitRate?: number; format?: string } = {},
+	): string {
+		// Request raw (no transcode) by default. Navidrome otherwise streams
+		// on-the-fly MP3 without a reliable Content-Length, which leaves the
+		// audio element with a wrong/drifting `duration` — breaks the progress
+		// bar ("ends while track continues") and seeking ("click shows wrong
+		// time"). Raw files carry accurate duration and seek precisely.
 		return this.buildUrl(
 			"stream",
-			{ id, maxBitRate: options.maxBitRate, format: options.format },
+			{
+				id,
+				maxBitRate: options.maxBitRate,
+				format: options.format ?? "raw",
+			},
 			{ stable: true },
 		);
 	}

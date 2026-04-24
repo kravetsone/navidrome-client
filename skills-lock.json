@@ -36,6 +36,11 @@
       "sourceType": "github",
       "computedHash": "5f231fda377e304b202848f09ecc0fd42839355e76f60e06c3ceb7a643c15500"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
+    },
     "macos-design-guidelines": {
       "source": "ehmo/platform-design-skills",
       "sourceType": "github",

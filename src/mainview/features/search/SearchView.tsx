@@ -483,64 +483,68 @@ function ArtistCell(props: { artist: Artist; client: SubsonicClient }) {
 }
 
 function TopResultCard(props: { top: TopResult; client: SubsonicClient }) {
-	if (props.top.kind === "artist") {
-		const a = props.top.artist;
-		return (
-			<section class={styles.topResult}>
-				<span class={styles.sectionEyebrow}>Top result</span>
-				<A
-					href={`/artist/${encodeURIComponent(a.id)}`}
-					class={styles.topCard}
-					data-kind="artist"
-				>
-					<CoverArt
-						src={artistCoverUrl(props.client, a, 480)}
-						name={a.name}
-						round
-						class={styles.topCover}
-					/>
-					<div class={styles.topText}>
-						<span class={styles.topKind}>Artist</span>
-						<h2 class={styles.topTitle}>{a.name}</h2>
-						<Show when={a.albumCount != null}>
-							<span class={styles.topMeta}>
-								{a.albumCount} album{a.albumCount === 1 ? "" : "s"}
-							</span>
-						</Show>
-					</div>
-				</A>
-			</section>
-		);
-	}
-
-	const album = props.top.album;
+	const artistTop = () =>
+		props.top.kind === "artist" ? props.top.artist : null;
+	const albumTop = () =>
+		props.top.kind === "album" ? props.top.album : null;
 	return (
 		<section class={styles.topResult}>
 			<span class={styles.sectionEyebrow}>Top result</span>
-			<A
-				href={`/album/${encodeURIComponent(album.id)}`}
-				class={styles.topCard}
-				data-kind="album"
-			>
-				<CoverArt
-					src={props.client.coverArtUrl(album.coverArt, 480)}
-					name={album.name}
-					class={styles.topCover}
-				/>
-				<div class={styles.topText}>
-					<span class={styles.topKind}>Album</span>
-					<h2 class={styles.topTitle}>{album.name}</h2>
-					<Show when={album.artist}>
-						<span class={styles.topMeta}>
-							{album.artist}
-							<Show when={album.year}>
-								{" · "}
-								{album.year}
-							</Show>
-						</span>
-					</Show>
-				</div>
-			</A>
+			<Switch>
+				<Match when={artistTop()}>
+					{(a) => (
+						<A
+							href={`/artist/${encodeURIComponent(a().id)}`}
+							class={styles.topCard}
+							data-kind="artist"
+						>
+							<CoverArt
+								src={artistCoverUrl(props.client, a(), 480)}
+								name={a().name}
+								round
+								class={styles.topCover}
+							/>
+							<div class={styles.topText}>
+								<span class={styles.topKind}>Artist</span>
+								<h2 class={styles.topTitle}>{a().name}</h2>
+								<Show when={a().albumCount != null}>
+									<span class={styles.topMeta}>
+										{a().albumCount} album{a().albumCount === 1 ? "" : "s"}
+									</span>
+								</Show>
+							</div>
+						</A>
+					)}
+				</Match>
+				<Match when={albumTop()}>
+					{(album) => (
+						<A
+							href={`/album/${encodeURIComponent(album().id)}`}
+							class={styles.topCard}
+							data-kind="album"
+						>
+							<CoverArt
+								src={props.client.coverArtUrl(album().coverArt, 480)}
+								name={album().name}
+								class={styles.topCover}
+							/>
+							<div class={styles.topText}>
+								<span class={styles.topKind}>Album</span>
+								<h2 class={styles.topTitle}>{album().name}</h2>
+								<Show when={album().artist}>
+									<span class={styles.topMeta}>
+										{album().artist}
+										<Show when={album().year}>
+											{" · "}
+											{album().year}
+										</Show>
+									</span>
+								</Show>
+							</div>
+						</A>
+					)}
+				</Match>
+			</Switch>
 		</section>
 	);
 }
