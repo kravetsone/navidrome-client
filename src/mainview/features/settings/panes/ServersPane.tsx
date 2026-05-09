@@ -1,5 +1,5 @@
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
-import { A } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import { useStore } from "@nanostores/solid";
 import { Plus, Trash2, Radio, Server, Check, Gauge, X, RotateCcw } from "lucide-solid";
 import {
@@ -12,6 +12,7 @@ import {
 } from "../../../stores/servers";
 import { SubsonicClient } from "../../../lib/subsonic/client";
 import type { ServerConfig, SpeedTestResult } from "../../../lib/subsonic/types";
+import { CommunityServers } from "../../connect/CommunityServers";
 import styles from "../SettingsView.module.css";
 import { Pane } from "../primitives/controls";
 
@@ -19,6 +20,7 @@ export function ServersPane() {
 	const servers = useStore($servers);
 	const activeId = useStore($activeServerId);
 	const status = useStore($status);
+	const navigate = useNavigate();
 
 	onMount(() => {
 		if ($activeServerId.get()) void pingActive();
@@ -74,6 +76,11 @@ export function ServersPane() {
 					</div>
 				</Show>
 			</section>
+
+			<CommunityServers
+				variant="pane"
+				onPick={(s) => navigate(`/connect?community=${encodeURIComponent(s.id)}`)}
+			/>
 		</Pane>
 	);
 }

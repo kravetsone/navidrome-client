@@ -1,9 +1,12 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
+import { useQueryClient } from "@tanstack/solid-query";
 import { ArrowRight, ChevronRight, AlertTriangle, CheckCircle2, ExternalLink } from "lucide-solid";
 import { probeServer, draftToConfig } from "../../lib/subsonic/probe";
 import { InvalidEndpointError, NetworkError, SubsonicError } from "../../lib/subsonic/types";
 import { addServer } from "../../stores/servers";
+import { communityServersQuery, type CommunityServer } from "../../lib/queries";
+import { CommunityServers } from "./CommunityServers";
 import styles from "./ConnectView.module.css";
 
 type AuthMode = "password" | "apiKey";
@@ -16,7 +19,8 @@ const DEFAULT_URL = "https://";
 
 export function ConnectView() {
 	const navigate = useNavigate();
-	const [searchParams] = useSearchParams();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const queryClient = useQueryClient();
 
 	const [url, setUrl] = createSignal(DEFAULT_URL);
 	const [username, setUsername] = createSignal("");
@@ -26,6 +30,27 @@ export function ConnectView() {
 	const [advancedOpen, setAdvancedOpen] = createSignal(false);
 	const [busy, setBusy] = createSignal(false);
 	const [feedback, setFeedback] = createSignal<Feedback | null>(null);
+
+	const prefillFromCommunity = (server: CommunityServer) => {
+		setAuthMode("password");
+		setUrl(server.url);
+		setUsername(server.username);
+		setSecret(server.password);
+		setDisplayName(server.name);
+		setFeedback(null);
+	};
+
+	createEffect(() => {
+		const id = searchParams.community?.toString();
+		if (!id) return;
+		void queryClient
+			.fetchQuery(communityServersQuery())
+			.then((list) => {
+				const match = list.servers.find((s) => s.id === id);
+				if (match) prefillFromCommunity(match);
+			})
+			.finally(() => setSearchParams({ community: undefined }, { replace: true }));
+	});
 
 	const canSubmit = () => {
 		if (busy()) return false;
@@ -264,6 +289,8 @@ export function ConnectView() {
 						</Show>
 					</button>
 				</form>
+
+				<CommunityServers onPick={prefillFromCommunity} variant="onboarding" />
 			</div>
 		</div>
 	);

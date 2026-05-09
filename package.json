@@ -21,7 +21,8 @@
 		"build": "vite build && electrobun build",
 		"build:canary": "vite build && electrobun build --env=canary",
 		"build:release": "vite build && electrobun build --env=stable",
-		"test:updater": "bun scripts/test-updater.ts"
+		"test:updater": "bun scripts/test-updater.ts",
+		"validate:servers": "bun scripts/validate-community-servers.ts"
 	},
 	"dependencies": {
 		"@kobalte/core": "^0.13.11",

@@ -1,0 +1,36 @@
+{
+	"version": 1,
+	"updated": "2026-04-25",
+	"servers": [
+		{
+			"id": "navidrome-demo",
+			"name": "Navidrome Demo",
+			"url": "https://demo.navidrome.org",
+			"username": "demo",
+			"password": "demo",
+			"type": "navidrome",
+			"description": "Free Jamendo, NCS, blocSonic & Nine Inch Nails tracks.",
+			"flag": "🌐"
+		},
+		{
+			"id": "pobeda",
+			"name": "навидромпобеда.рф",
+			"url": "https://навидромпобеда.рф",
+			"username": "user",
+			"password": "password",
+			"type": "navidrome",
+			"description": "Community server.",
+			"flag": "🎵"
+		},
+		{
+			"id": "stupid-fish",
+			"name": "stupid.fish",
+			"url": "https://navi.stupid.fish",
+			"username": "anonymous",
+			"password": "anonymous",
+			"type": "navidrome",
+			"description": "Community-run, anonymous access.",
+			"flag": "🐟"
+		}
+	]
+}
