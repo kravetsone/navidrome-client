@@ -86,8 +86,9 @@
 
 .content {
 	flex: 1;
-	overflow-y: auto;
+	overflow-y: scroll;
 	overflow-x: hidden;
+	scrollbar-gutter: stable;
 	padding: 0 var(--space-8) var(--space-8);
 }
 
