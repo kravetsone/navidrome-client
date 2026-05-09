@@ -74,6 +74,16 @@ export function PlayerBar() {
 		return clientFor(server).coverArtUrl(s.coverArt, 96);
 	});
 
+	// If the user just came from the album view, the album cover is already in
+	// the browser/paint cache — paint it underneath while the song's own cover
+	// (often a different ID in Navidrome) decodes. Cross-fades in CoverArt.
+	const coverPoster = createMemo(() => {
+		const s = song();
+		const server = queueServer();
+		if (!s || !server || !s.albumId) return undefined;
+		return clientFor(server).coverArtUrl(s.albumId, 96);
+	});
+
 	const totalSeconds = createMemo(() => {
 		const d = duration();
 		if (d > 0) return d;
@@ -158,6 +168,7 @@ export function PlayerBar() {
 							>
 								<CoverArt
 									src={coverSrc()}
+									posterSrc={coverPoster()}
 									name={s().title}
 									class={styles.artImg}
 								/>

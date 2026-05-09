@@ -76,6 +76,15 @@ export function NowPlayingView() {
 		return clientFor(server).coverArtUrl(s.coverArt, 720);
 	});
 
+	// Album cover as instant poster — already cached if the user opened Now
+	// Playing right after starting a song from its album view.
+	const coverPoster = createMemo(() => {
+		const s = song();
+		const server = activeServer();
+		if (!s || !server || !s.albumId) return undefined;
+		return clientFor(server).coverArtUrl(s.albumId, 720);
+	});
+
 	// Small size for the blurred backdrop — the filter destroys all detail
 	// anyway, so a 240px source renders identically at a fraction of the
 	// decode/compositor cost.
@@ -246,6 +255,7 @@ export function NowPlayingView() {
 										>
 											<CoverArt
 												src={coverSrc()}
+												posterSrc={coverPoster()}
 												name={song()!.title}
 												class={styles.cover}
 											/>
