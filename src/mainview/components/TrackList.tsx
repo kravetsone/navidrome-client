@@ -4,7 +4,7 @@ import { useStore } from "@nanostores/solid";
 import { Disc } from "lucide-solid";
 import { Play } from "lucide-solid";
 import type { Song } from "../lib/subsonic";
-import { $currentSong, $isPlaying, $queueOpen } from "../stores/player";
+import { $contextQueue, $currentSong, $isPlaying, $queueOpen } from "../stores/player";
 import { HeartButton } from "./HeartButton";
 import { SongContextMenu } from "./menus";
 import styles from "./TrackList.module.css";
@@ -50,11 +50,25 @@ export function TrackList(props: TrackListProps) {
 
 	const rows = createMemo<Row[]>(() => {
 		const list = props.songs;
+		// Identity check: is this list secretly the contextQueue, or a distinct
+		// array (e.g. an album's song[])?
+		const sameRefAsContextQueue = list === $contextQueue.get();
 		// eslint-disable-next-line no-console
-		console.info("[TrackList rows]", {
-			currentId: currentSong()?.id,
-			list: list.map((s) => ({ id: s.id, title: s.title })),
-		});
+		console.info(
+			"[TrackList rows]",
+			JSON.stringify(
+				{
+					currentId: currentSong()?.id,
+					sameRefAsContextQueue,
+					listLen: list.length,
+					listLast: `${list.length - 1}:${list[list.length - 1]?.id}:${list[list.length - 1]?.title}`,
+					listSecondLast: `${list.length - 2}:${list[list.length - 2]?.id}:${list[list.length - 2]?.title}`,
+					list: list.map((s, i) => `${i}:${s.id}:${s.title}`),
+				},
+				null,
+				2,
+			),
+		);
 		if (!props.groupByDisc) {
 			return list.map((song, index) => ({
 				kind: "song" as const,

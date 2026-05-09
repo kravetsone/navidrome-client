@@ -398,14 +398,36 @@ export function playSong(song: Song) {
 export function playQueue(songs: Song[], startIndex = 0) {
 	if (songs.length === 0) return;
 	const idx = Math.max(0, Math.min(startIndex, songs.length - 1));
+	const prevCtxRef = $contextQueue.get();
+	const songsLen = songs.length;
+	const lastSong = songs[songsLen - 1];
+	const secondLastSong = songs[songsLen - 2];
 	// eslint-disable-next-line no-console
-	console.info("[playQueue]", {
-		startIndex,
-		idx,
-		songs: songs.map((s) => ({ id: s.id, title: s.title })),
-		prevCtx: $contextQueue.get().map((s) => ({ id: s.id, title: s.title })),
-		prevIdx: $contextIndex.get(),
-		prevCurrentId: $currentSong.get()?.id,
+	console.info(
+		"[playQueue]",
+		JSON.stringify(
+			{
+				startIndex,
+				idx,
+				songsLen,
+				songsLast: `${songsLen - 1}:${lastSong?.id}:${lastSong?.title}`,
+				songsSecondLast: `${songsLen - 2}:${secondLastSong?.id}:${secondLastSong?.title}`,
+				lastSongSameRefAsPrevCurrent:
+					prevCtxRef[0] === lastSong,
+				lastSongSameRefAsSecondLast: lastSong === secondLastSong,
+				songs: songs.map((s, i) => `${i}:${s.id}:${s.title}`),
+			},
+			null,
+			2,
+		),
+	);
+	// Also log refs to the console so we can inspect identity.
+	// eslint-disable-next-line no-console
+	console.info("[playQueue refs]", {
+		songsArrayRef: songs,
+		lastSongRef: lastSong,
+		secondLastSongRef: secondLastSong,
+		prevCtxFirstRef: prevCtxRef[0],
 	});
 	queueGeneration++;
 	userTouchedQueue = true;
@@ -418,12 +440,25 @@ export function playQueue(songs: Song[], startIndex = 0) {
 	// userQueue is preserved across context changes (Spotify behaviour).
 	regenerateShuffleOrder();
 	$isPlaying.set(true);
-	// eslint-disable-next-line no-console
-	console.info("[playQueue:after]", {
-		ctx: $contextQueue.get().map((s) => ({ id: s.id, title: s.title })),
-		idx: $contextIndex.get(),
-		currentId: $currentSong.get()?.id,
-	});
+	{
+		const c = $contextQueue.get();
+		const i = $contextIndex.get();
+		// eslint-disable-next-line no-console
+		console.info(
+			"[playQueue:after]",
+			JSON.stringify(
+				{
+					ctx: c.map((s, j) => `${j}:${s.id}:${s.title}`),
+					idx: i,
+					ctxAtIdx: c[i]?.id + ":" + c[i]?.title,
+					ctxAtIdxMinus1: c[i - 1]?.id + ":" + c[i - 1]?.title,
+					currentId: $currentSong.get()?.id,
+				},
+				null,
+				2,
+			),
+		);
+	}
 }
 
 export function appendRadioTracks(songs: Song[]) {
